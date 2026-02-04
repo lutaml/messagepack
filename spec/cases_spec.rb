@@ -4,7 +4,7 @@ $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 require 'json'
 
-describe MessagePack do
+describe Messagepack do
   here = File.dirname(__FILE__)
   CASES         = File.read("#{here}/cases.msg")
   CASES_JSON    = File.read("#{here}/cases.json")
@@ -12,7 +12,7 @@ describe MessagePack do
 
   it 'compare with json' do
     ms = []
-    MessagePack::Unpacker.new.feed_each(CASES) { |m|
+    Messagepack::Unpacker.new.feed_each(CASES) { |m|
       ms << m
     }
 
@@ -25,12 +25,12 @@ describe MessagePack do
 
   it 'compare with compat' do
     ms = []
-    MessagePack::Unpacker.new.feed_each(CASES) { |m|
+    Messagepack::Unpacker.new.feed_each(CASES) { |m|
       ms << m
     }
 
     cs = []
-    MessagePack::Unpacker.new.feed_each(CASES_COMPACT) { |c|
+    Messagepack::Unpacker.new.feed_each(CASES_COMPACT) { |c|
       cs << c
     }
 

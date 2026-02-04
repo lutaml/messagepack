@@ -4,22 +4,22 @@ require 'zlib'
 
 require 'spec_helper'
 
-describe MessagePack::Unpacker do
+describe Messagepack::Unpacker do
   let :unpacker do
-    MessagePack::Unpacker.new
+    Messagepack::Unpacker.new
   end
 
   let :packer do
-    MessagePack::Packer.new
+    Messagepack::Packer.new
   end
 
   it 'gets options to specify how to unpack values' do
-    u1 = MessagePack::Unpacker.new
+    u1 = Messagepack::Unpacker.new
     u1.symbolize_keys?.should == false
     u1.freeze?.should == false
     u1.allow_unknown_ext?.should == false
 
-    u2 = MessagePack::Unpacker.new(symbolize_keys: true, freeze: true, allow_unknown_ext: true)
+    u2 = Messagepack::Unpacker.new(symbolize_keys: true, freeze: true, allow_unknown_ext: true)
     u2.symbolize_keys?.should == true
     u2.freeze?.should == true
     u2.allow_unknown_ext?.should == true
@@ -28,7 +28,7 @@ describe MessagePack::Unpacker do
   if automatic_string_keys_deduplication?
     it 'ensure string hash keys are deduplicated' do
       sample_data = [{"foo" => 1}, {"foo" => 2}]
-      sample_packed = MessagePack.pack(sample_data).force_encoding('ASCII-8BIT')
+      sample_packed = Messagepack.pack(sample_data).force_encoding('ASCII-8BIT')
       unpacker.feed(sample_packed)
       hashes = nil
       unpacker.each { |obj| hashes = obj }
@@ -37,7 +37,7 @@ describe MessagePack::Unpacker do
 
     it 'ensure strings are not deduplicated' do
       sample_data = ["foo"]
-      sample_packed = MessagePack.pack(sample_data).force_encoding('ASCII-8BIT')
+      sample_packed = Messagepack.pack(sample_data).force_encoding('ASCII-8BIT')
       unpacker.feed(sample_packed)
       ary = nil
       unpacker.each { |obj| ary = obj }
@@ -47,14 +47,14 @@ describe MessagePack::Unpacker do
 
   it 'gets IO or object which has #read to read data from it' do
     sample_data = {"message" => "morning!", "num" => 1}
-    sample_packed = MessagePack.pack(sample_data).force_encoding('ASCII-8BIT')
+    sample_packed = Messagepack.pack(sample_data).force_encoding('ASCII-8BIT')
 
     Tempfile.open("for_io") do |file|
       file.sync = true
       file.write sample_packed
       file.rewind
 
-      u1 = MessagePack::Unpacker.new(file)
+      u1 = Messagepack::Unpacker.new(file)
       u1.each do |obj|
         expect(obj).to eql(sample_data)
       end
@@ -62,7 +62,7 @@ describe MessagePack::Unpacker do
     end
 
     sio = StringIO.new(sample_packed)
-    u2 = MessagePack::Unpacker.new(sio)
+    u2 = Messagepack::Unpacker.new(sio)
     u2.each do |obj|
       expect(obj).to eql(sample_data)
     end
@@ -70,7 +70,7 @@ describe MessagePack::Unpacker do
     dio = StringIO.new
     Zlib::GzipWriter.wrap(dio){|gz| gz.write sample_packed }
     reader = Zlib::GzipReader.new(StringIO.new(dio.string))
-    u3 = MessagePack::Unpacker.new(reader)
+    u3 = Messagepack::Unpacker.new(reader)
     u3.each do |obj|
       expect(obj).to eql(sample_data)
     end
@@ -106,7 +106,7 @@ describe MessagePack::Unpacker do
 
     dio = DummyIO.new
     dio.write sample_packed
-    u4 = MessagePack::Unpacker.new(dio)
+    u4 = Messagepack::Unpacker.new(dio)
     u4.each do |obj|
       expect(obj).to eql(sample_data)
     end
@@ -121,17 +121,17 @@ describe MessagePack::Unpacker do
     unpacker.feed("\x81")
     lambda {
       unpacker.read_array_header
-    }.should raise_error(MessagePack::TypeError)  # TypeError is included in UnexpectedTypeError
+    }.should raise_error(Messagepack::TypeError)  # TypeError is included in UnexpectedTypeError
     lambda {
       unpacker.read_array_header
-    }.should raise_error(MessagePack::UnexpectedTypeError)
+    }.should raise_error(Messagepack::UnexpectedTypeError)
   end
 
   it 'read_map_header converts an map to key-value sequence' do
     packer.write_array_header(2)
     packer.write("e")
     packer.write(1)
-    unpacker = MessagePack::Unpacker.new
+    unpacker = Messagepack::Unpacker.new
     unpacker.feed(packer.to_s)
     unpacker.read_array_header.should == 2
     unpacker.read.should == "e"
@@ -147,7 +147,7 @@ describe MessagePack::Unpacker do
     packer.write_map_header(1)
     packer.write("k")
     packer.write("v")
-    unpacker = MessagePack::Unpacker.new
+    unpacker = Messagepack::Unpacker.new
     unpacker.feed(packer.to_s)
     unpacker.read_map_header.should == 1
     unpacker.read.should == "k"
@@ -158,10 +158,10 @@ describe MessagePack::Unpacker do
     unpacker.feed("\x91")
     lambda {
       unpacker.read_map_header
-    }.should raise_error(MessagePack::TypeError)  # TypeError is included in UnexpectedTypeError
+    }.should raise_error(Messagepack::TypeError)  # TypeError is included in UnexpectedTypeError
     lambda {
       unpacker.read_map_header
-    }.should raise_error(MessagePack::UnexpectedTypeError)
+    }.should raise_error(Messagepack::UnexpectedTypeError)
   end
 
   it 'read raises EOFError before feeding' do
@@ -261,7 +261,7 @@ describe MessagePack::Unpacker do
     unpacker.feed("\xc1")
     lambda {
       unpacker.read
-    }.should raise_error(MessagePack::MalformedFormatError)
+    }.should raise_error(Messagepack::MalformedFormatError)
   end
 
   it "gc mark" do
@@ -308,15 +308,15 @@ describe MessagePack::Unpacker do
     parsed.should == true
   end
 
-  it 'MessagePack.unpack symbolize_keys' do
+  it 'Messagepack.unpack symbolize_keys' do
     symbolized_hash = {:a => 'b', :c => 'd'}
-    MessagePack.load(MessagePack.pack(symbolized_hash), :symbolize_keys => true).should == symbolized_hash
-    MessagePack.unpack(MessagePack.pack(symbolized_hash), :symbolize_keys => true).should == symbolized_hash
+    Messagepack.load(Messagepack.pack(symbolized_hash), :symbolize_keys => true).should == symbolized_hash
+    Messagepack.unpack(Messagepack.pack(symbolized_hash), :symbolize_keys => true).should == symbolized_hash
   end
 
-  it 'MessagePack.unpack symbolize_keys preserve encoding' do
+  it 'Messagepack.unpack symbolize_keys preserve encoding' do
     hash = { :ascii => 1, :utf8_é => 2}
-    loaded_hash = MessagePack.load(MessagePack.pack(hash), :symbolize_keys => true)
+    loaded_hash = Messagepack.load(Messagepack.pack(hash), :symbolize_keys => true)
 
     hash.keys[0].encoding.should == Encoding::US_ASCII # Ruby coerce symbols to US-ASCII when possible.
     loaded_hash.keys[0].should == hash.keys[0]
@@ -326,81 +326,81 @@ describe MessagePack::Unpacker do
     loaded_hash.keys[1].should == hash.keys[1]
     loaded_hash.keys[1].encoding.should == hash.keys[1].encoding
 
-    MessagePack.unpack(MessagePack.pack(hash), :symbolize_keys => true).should == hash
+    Messagepack.unpack(Messagepack.pack(hash), :symbolize_keys => true).should == hash
   end
 
   it 'Unpacker#unpack symbolize_keys' do
-    unpacker = MessagePack::Unpacker.new(:symbolize_keys => true)
+    unpacker = Messagepack::Unpacker.new(:symbolize_keys => true)
     symbolized_hash = {:a => 'b', :c => 'd'}
-    unpacker.feed(MessagePack.pack(symbolized_hash)).read.should == symbolized_hash
+    unpacker.feed(Messagepack.pack(symbolized_hash)).read.should == symbolized_hash
   end
 
   it "msgpack str 8 type" do
-    MessagePack.unpack([0xd9, 0x00].pack('C*')).should == ""
-    MessagePack.unpack([0xd9, 0x00].pack('C*')).encoding.should == Encoding::UTF_8
-    MessagePack.unpack([0xd9, 0x01].pack('C*') + 'a').should == "a"
-    MessagePack.unpack([0xd9, 0x02].pack('C*') + 'aa').should == "aa"
+    Messagepack.unpack([0xd9, 0x00].pack('C*')).should == ""
+    Messagepack.unpack([0xd9, 0x00].pack('C*')).encoding.should == Encoding::UTF_8
+    Messagepack.unpack([0xd9, 0x01].pack('C*') + 'a').should == "a"
+    Messagepack.unpack([0xd9, 0x02].pack('C*') + 'aa').should == "aa"
   end
 
   it "msgpack str 16 type" do
-    MessagePack.unpack([0xda, 0x00, 0x00].pack('C*')).should == ""
-    MessagePack.unpack([0xda, 0x00, 0x00].pack('C*')).encoding.should == Encoding::UTF_8
-    MessagePack.unpack([0xda, 0x00, 0x01].pack('C*') + 'a').should == "a"
-    MessagePack.unpack([0xda, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
+    Messagepack.unpack([0xda, 0x00, 0x00].pack('C*')).should == ""
+    Messagepack.unpack([0xda, 0x00, 0x00].pack('C*')).encoding.should == Encoding::UTF_8
+    Messagepack.unpack([0xda, 0x00, 0x01].pack('C*') + 'a').should == "a"
+    Messagepack.unpack([0xda, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
   end
 
   it "msgpack str 32 type" do
-    MessagePack.unpack([0xdb, 0x00, 0x00, 0x00, 0x00].pack('C*')).should == ""
-    MessagePack.unpack([0xdb, 0x00, 0x00, 0x00, 0x00].pack('C*')).encoding.should == Encoding::UTF_8
-    MessagePack.unpack([0xdb, 0x00, 0x00, 0x00, 0x01].pack('C*') + 'a').should == "a"
-    MessagePack.unpack([0xdb, 0x00, 0x00, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
+    Messagepack.unpack([0xdb, 0x00, 0x00, 0x00, 0x00].pack('C*')).should == ""
+    Messagepack.unpack([0xdb, 0x00, 0x00, 0x00, 0x00].pack('C*')).encoding.should == Encoding::UTF_8
+    Messagepack.unpack([0xdb, 0x00, 0x00, 0x00, 0x01].pack('C*') + 'a').should == "a"
+    Messagepack.unpack([0xdb, 0x00, 0x00, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
   end
 
   it "msgpack bin 8 type" do
-    MessagePack.unpack([0xc4, 0x00].pack('C*')).should == ""
-    MessagePack.unpack([0xc4, 0x00].pack('C*')).encoding.should == Encoding::ASCII_8BIT
-    MessagePack.unpack([0xc4, 0x01].pack('C*') + 'a').should == "a"
-    MessagePack.unpack([0xc4, 0x02].pack('C*') + 'aa').should == "aa"
+    Messagepack.unpack([0xc4, 0x00].pack('C*')).should == ""
+    Messagepack.unpack([0xc4, 0x00].pack('C*')).encoding.should == Encoding::ASCII_8BIT
+    Messagepack.unpack([0xc4, 0x01].pack('C*') + 'a').should == "a"
+    Messagepack.unpack([0xc4, 0x02].pack('C*') + 'aa').should == "aa"
   end
 
   it "msgpack bin 16 type" do
-    MessagePack.unpack([0xc5, 0x00, 0x00].pack('C*')).should == ""
-    MessagePack.unpack([0xc5, 0x00, 0x00].pack('C*')).encoding.should == Encoding::ASCII_8BIT
-    MessagePack.unpack([0xc5, 0x00, 0x01].pack('C*') + 'a').should == "a"
-    MessagePack.unpack([0xc5, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
+    Messagepack.unpack([0xc5, 0x00, 0x00].pack('C*')).should == ""
+    Messagepack.unpack([0xc5, 0x00, 0x00].pack('C*')).encoding.should == Encoding::ASCII_8BIT
+    Messagepack.unpack([0xc5, 0x00, 0x01].pack('C*') + 'a').should == "a"
+    Messagepack.unpack([0xc5, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
   end
 
   it "msgpack bin 32 type" do
-    MessagePack.unpack([0xc6, 0x00, 0x00, 0x00, 0x00].pack('C*')).should == ""
-    MessagePack.unpack([0xc6, 0x0, 0x00, 0x00, 0x000].pack('C*')).encoding.should == Encoding::ASCII_8BIT
-    MessagePack.unpack([0xc6, 0x00, 0x00, 0x00, 0x01].pack('C*') + 'a').should == "a"
-    MessagePack.unpack([0xc6, 0x00, 0x00, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
+    Messagepack.unpack([0xc6, 0x00, 0x00, 0x00, 0x00].pack('C*')).should == ""
+    Messagepack.unpack([0xc6, 0x0, 0x00, 0x00, 0x000].pack('C*')).encoding.should == Encoding::ASCII_8BIT
+    Messagepack.unpack([0xc6, 0x00, 0x00, 0x00, 0x01].pack('C*') + 'a').should == "a"
+    Messagepack.unpack([0xc6, 0x00, 0x00, 0x00, 0x02].pack('C*') + 'aa').should == "aa"
   end
 
   describe "ext formats" do
-    let(:unpacker) { MessagePack::Unpacker.new(allow_unknown_ext: true) }
+    let(:unpacker) { Messagepack::Unpacker.new(allow_unknown_ext: true) }
 
     [1, 2, 4, 8, 16].zip([0xd4, 0xd5, 0xd6, 0xd7, 0xd8]).each do |n,b|
       it "msgpack fixext #{n} format" do
-        unpacker.feed([b, 1].pack('CC') + "a"*n).unpack.should == MessagePack::ExtensionValue.new(1, "a"*n)
-        unpacker.feed([b, -1].pack('CC') + "a"*n).unpack.should == MessagePack::ExtensionValue.new(-1, "a"*n)
+        unpacker.feed([b, 1].pack('CC') + "a"*n).unpack.should == Messagepack::ExtensionValue.new(1, "a"*n)
+        unpacker.feed([b, -1].pack('CC') + "a"*n).unpack.should == Messagepack::ExtensionValue.new(-1, "a"*n)
       end
     end
 
     it "msgpack ext 8 format" do
-      unpacker.feed([0xc7, 0, 1].pack('CCC')).unpack.should == MessagePack::ExtensionValue.new(1, "")
-      unpacker.feed([0xc7, 255, -1].pack('CCC') + "a"*255).unpack.should == MessagePack::ExtensionValue.new(-1, "a"*255)
+      unpacker.feed([0xc7, 0, 1].pack('CCC')).unpack.should == Messagepack::ExtensionValue.new(1, "")
+      unpacker.feed([0xc7, 255, -1].pack('CCC') + "a"*255).unpack.should == Messagepack::ExtensionValue.new(-1, "a"*255)
     end
 
     it "msgpack ext 16 format" do
-      unpacker.feed([0xc8, 0, 1].pack('CnC')).unpack.should == MessagePack::ExtensionValue.new(1, "")
-      unpacker.feed([0xc8, 256, -1].pack('CnC') + "a"*256).unpack.should == MessagePack::ExtensionValue.new(-1, "a"*256)
+      unpacker.feed([0xc8, 0, 1].pack('CnC')).unpack.should == Messagepack::ExtensionValue.new(1, "")
+      unpacker.feed([0xc8, 256, -1].pack('CnC') + "a"*256).unpack.should == Messagepack::ExtensionValue.new(-1, "a"*256)
     end
 
     it "msgpack ext 32 format" do
-      unpacker.feed([0xc9, 0, 1].pack('CNC')).unpack.should == MessagePack::ExtensionValue.new(1, "")
-      unpacker.feed([0xc9, 256, -1].pack('CNC') + "a"*256).unpack.should == MessagePack::ExtensionValue.new(-1, "a"*256)
-      unpacker.feed([0xc9, 65536, -1].pack('CNC') + "a"*65536).unpack.should == MessagePack::ExtensionValue.new(-1, "a"*65536)
+      unpacker.feed([0xc9, 0, 1].pack('CNC')).unpack.should == Messagepack::ExtensionValue.new(1, "")
+      unpacker.feed([0xc9, 256, -1].pack('CNC') + "a"*256).unpack.should == Messagepack::ExtensionValue.new(-1, "a"*256)
+      unpacker.feed([0xc9, 65536, -1].pack('CNC') + "a"*65536).unpack.should == Messagepack::ExtensionValue.new(-1, "a"*65536)
     end
   end
 
@@ -419,7 +419,7 @@ describe MessagePack::Unpacker do
       @num.to_msgpack
     end
     def self.from_msgpack_ext(data)
-      self.new(MessagePack.unpack(data))
+      self.new(Messagepack.unpack(data))
     end
   end
 
@@ -438,7 +438,7 @@ describe MessagePack::Unpacker do
       @num_s.to_msgpack
     end
     def self.from_msgpack_ext(data)
-      self.new(MessagePack.unpack(data))
+      self.new(Messagepack.unpack(data))
     end
   end
 
@@ -472,17 +472,17 @@ describe MessagePack::Unpacker do
 
   context 'with ext definitions' do
     it 'get type and class mapping for packing' do
-      unpacker = MessagePack::Unpacker.new
+      unpacker = Messagepack::Unpacker.new
       unpacker.register_type(0x01){|data| ValueOne.from_msgpack_ext }
       unpacker.register_type(0x02){|data| ValueTwo.from_msgpack_ext(data) }
 
-      unpacker = MessagePack::Unpacker.new
+      unpacker = Messagepack::Unpacker.new
       unpacker.register_type(0x01, ValueOne, :from_msgpack_ext)
       unpacker.register_type(0x02, ValueTwo, :from_msgpack_ext)
     end
 
     it 'returns a Array of Hash which contains :type, :class and :unpacker' do
-      unpacker = MessagePack::Unpacker.new
+      unpacker = Messagepack::Unpacker.new
       unpacker.register_type(0x02, ValueTwo, :from_msgpack_ext)
       unpacker.register_type(0x01, ValueOne, :from_msgpack_ext)
 
@@ -505,7 +505,7 @@ describe MessagePack::Unpacker do
     end
 
     it 'returns a Array of Hash, which contains nil for class if block unpacker specified' do
-      unpacker = MessagePack::Unpacker.new
+      unpacker = Messagepack::Unpacker.new
       unpacker.register_type(0x01){|data| ValueOne.from_msgpack_ext }
       unpacker.register_type(0x02, &ValueTwo.method(:from_msgpack_ext))
 
@@ -530,7 +530,7 @@ describe MessagePack::Unpacker do
     describe "registering an ext type for a module" do
       subject { unpacker.feed("\xc7\x06\x00module").unpack }
 
-      let(:unpacker) { MessagePack::Unpacker.new }
+      let(:unpacker) { Messagepack::Unpacker.new }
 
       before do
         mod = Module.new do
@@ -563,15 +563,15 @@ describe MessagePack::Unpacker do
   end
 
   let :buffer1 do
-    MessagePack.pack(:foo => 'bar')
+    Messagepack.pack(:foo => 'bar')
   end
 
   let :buffer2 do
-    MessagePack.pack(:hello => {:world => [1, 2, 3]})
+    Messagepack.pack(:hello => {:world => [1, 2, 3]})
   end
 
   let :buffer3 do
-    MessagePack.pack(:x => 'y')
+    Messagepack.pack(:x => 'y')
   end
 
   describe '#read' do
@@ -668,15 +668,15 @@ describe MessagePack::Unpacker do
   context 'regressions' do
     it 'handles massive arrays (issue #2)' do
       array = ['foo'] * 10_000
-      MessagePack.unpack(MessagePack.pack(array)).size.should == 10_000
+      Messagepack.unpack(Messagepack.pack(array)).size.should == 10_000
     end
 
     it 'preserves string encoding (issue #200)' do
       string = 'a'.force_encoding(Encoding::UTF_8)
-      MessagePack.unpack(MessagePack.pack(string)).encoding.should == string.encoding
+      Messagepack.unpack(Messagepack.pack(string)).encoding.should == string.encoding
 
       string *= 256
-      MessagePack.unpack(MessagePack.pack(string)).encoding.should == string.encoding
+      Messagepack.unpack(Messagepack.pack(string)).encoding.should == string.encoding
     end
 
     it 'returns correct size for array16 (issue #127)' do
@@ -693,7 +693,7 @@ describe MessagePack::Unpacker do
   context 'extensions' do
     context 'symbolized keys' do
       let :buffer do
-        MessagePack.pack({'hello' => 'world', 'nested' => ['object', {'structure' => true}]})
+        Messagepack.pack({'hello' => 'world', 'nested' => ['object', {'structure' => true}]})
       end
 
       let :unpacker do
@@ -724,7 +724,7 @@ describe MessagePack::Unpacker do
       end
 
       let :buffer do
-        MessagePack.pack(struct)
+        Messagepack.pack(struct)
       end
 
       let :unpacker do
@@ -734,17 +734,17 @@ describe MessagePack::Unpacker do
       if (-"test").equal?(-"test") # RUBY_VERSION >= "2.5"
         it 'dedups strings' do
           interned_str = -"test"
-          roundtrip = MessagePack.unpack(MessagePack.pack(interned_str), freeze: true)
+          roundtrip = Messagepack.unpack(Messagepack.pack(interned_str), freeze: true)
           expect(roundtrip).to be interned_str
 
           interned_str = -""
-          roundtrip = MessagePack.unpack(MessagePack.pack(interned_str), freeze: true)
+          roundtrip = Messagepack.unpack(Messagepack.pack(interned_str), freeze: true)
           expect(roundtrip).to be interned_str
         end
       end
 
       it 'can freeze objects when using .unpack' do
-        parsed_struct = MessagePack.unpack(buffer, freeze: true)
+        parsed_struct = Messagepack.unpack(buffer, freeze: true)
         parsed_struct.should == struct
 
         parsed_struct.should be_frozen
@@ -814,7 +814,7 @@ describe MessagePack::Unpacker do
 
     context 'binary encoding', :encodings do
       let :buffer do
-        MessagePack.pack({
+        Messagepack.pack({
           'hello'.b => 'world'.b,
           'nested'.b => [
             'object'.b,
@@ -851,7 +851,7 @@ describe MessagePack::Unpacker do
 
     context 'string encoding', :encodings do
       let :buffer do
-        MessagePack.pack({'hello'.force_encoding(Encoding::UTF_8) => 'world'.force_encoding(Encoding::UTF_8), 'nested'.force_encoding(Encoding::UTF_8) => ['object'.force_encoding(Encoding::UTF_8), {'structure'.force_encoding(Encoding::UTF_8) => true}]})
+        Messagepack.pack({'hello'.force_encoding(Encoding::UTF_8) => 'world'.force_encoding(Encoding::UTF_8), 'nested'.force_encoding(Encoding::UTF_8) => ['object'.force_encoding(Encoding::UTF_8), {'structure'.force_encoding(Encoding::UTF_8) => true}]})
       end
 
       let :unpacker do
@@ -895,7 +895,7 @@ describe MessagePack::Unpacker do
     begin
       GC.stress = true
 
-      MessagePack::Unpacker.new.buffer
+      Messagepack::Unpacker.new.buffer
       Object.new
     ensure
       GC.stress = stress

@@ -1,0 +1,157 @@
+---
+title: Thread-safe usage
+nav_order: 3
+---
+
+== Purpose
+
+This tutorial explains how to use MessagePack factories safely in multi-threaded
+applications.
+
+== References
+
+* link:../pages/factory-pattern[Factory pattern] - Factory concepts
+* link:../guides/performance[Performance guide] - Performance optimization
+
+== Prerequisites
+
+* Completed link:../tutorials/getting-started[Getting started] tutorial
+* Basic understanding of Ruby threads
+
+== Understanding thread safety
+
+The `Messagepack::Factory` class provides two approaches for thread-safe usage:
+
+* **Frozen factory** - Safe for concurrent reads
+* **Factory pool** - Safe for concurrent reads and writes
+
+== Using frozen factories
+
+For concurrent serialization with custom types:
+
+[source,ruby]
+----
+# Create and configure factory
+factory = Messagepack::Factory.new
+factory.register_type(0x01, MyClass, packer: ..., unpacker: ...)
+
+# Freeze to make thread-safe
+factory.freeze
+
+# Now safe to use from multiple threads
+threads = 10.times.map do
+  Thread.new { factory.pack(my_object) }
+end
+results = threads.map(&:value)
+----
+
+NOTE: Frozen factories are safe for concurrent packing but not for unpacking
+from a shared unpacker. Use pools for full thread safety.
+
+== Using factory pools
+
+Pools provide the highest level of thread safety:
+
+[source,ruby]
+----
+# Create pool with 5 instances
+pool = factory.pool(5)
+
+# Use from multiple threads
+threads = 20.times.map do |i|
+  Thread.new do
+    # Each thread gets its own packer/unpacker from the pool
+    data = { id: i, value: "thread-#{i}" }
+    binary = pool.pack(data)
+    pool.unpack(binary)
+  end
+end
+
+results = threads.map(&:value)
+----
+
+=== Pool size guidelines
+
+Choose pool size based on your concurrency needs:
+
+[source,ruby]
+----
+# For thread pool of 10 workers
+pool = factory.pool(10)
+
+# For unlimited concurrency, use number of CPU cores
+pool = factory.pool(Erl::Concurrency.available_processors)
+
+# Default: 4 instances
+pool = factory.pool(4)
+----
+
+== Practical example: Web server
+
+[source,ruby]
+----
+require 'messagepack'
+
+class Cache
+  def initialize
+    @factory = Messagepack::Factory.new
+    @factory.register_type(0x01, CachedObject, ...)
+    @pool = @factory.pool(10)
+  end
+
+  def put(key, value)
+    binary = @pool.pack(value)
+    redis.set("cache:#{key}", binary)
+  end
+
+  def get(key)
+    data = redis.get("cache:#{key}")
+    return nil unless data
+    @pool.unpack(data)
+  end
+end
+
+# Thread-safe for web server
+cache = Cache.new
+
+# In web requests (concurrent)
+Thread.new do
+  cache.put("user:123", user_data)
+end
+
+Thread.new do
+  user = cache.get("user:123")
+end
+----
+
+== Performance considerations
+
+[source,ruby]
+----
+# Benchmark different approaches
+require 'benchmark'
+
+n = 10000
+
+Benchmark.bm do |x|
+  x.report("pack:") do
+    factory = Messagepack::Factory.new
+    n.times { factory.pack(data) }
+  end
+
+  x.report("pool(2):") do
+    pool = factory.pool(2)
+    n.times { pool.pack(data) }
+  end
+
+  x.report("pool(10):") do
+    pool = factory.pool(10)
+    n.times { pool.pack(data) }
+  end
+end
+----
+
+== Next steps
+
+* link:../guides/performance[Performance guide] - Optimize for performance
+* link:../references/api[API reference] - Complete API documentation

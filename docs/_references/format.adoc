@@ -1,0 +1,301 @@
+---
+title: Format specification
+nav_order: 2
+---
+
+== Purpose
+
+Detailed specification of the MessagePack binary format.
+
+== References
+
+* https://github.com/msgpack/msgpack/blob/master/spec.md[Official MessagePack specification]
+
+== Format overview
+
+MessagePack uses a compact binary format where the first byte contains both
+format information and often the value itself.
+
+== Integer types
+
+=== Positive fixint (0x00 - 0x7F)
+
+Stores integers 0-127 in a single byte.
+
+[source]
+----
++--------+
+|0XXXXXXX|
++--------+
+
+stores 0-127 in one byte
+----
+
+=== Negative fixint (0xE0 - 0xFF)
+
+Stores integers -1 to -32 in a single byte.
+
+[source]
+----
++--------+
+|111XXXXX|
++--------+
+
+stores -32 to -1 in one byte
+----
+
+=== uint8 (0xCC)
+
+Stores unsigned 8-bit integer.
+
+[source]
+----
++--------+--------+
+|  0xCC  |XXXXXXX|
++--------+--------+
+
+stores 0-255 in two bytes
+----
+
+=== uint16 (0xCD)
+
+Stores unsigned 16-bit integer (big-endian).
+
+[source]
+----
++--------+--------+--------+
+|  0xCD  |ZZZZZZZZ|ZZZZZZZZ|
++--------+--------+--------+
+
+stores 0-65535 in three bytes
+----
+
+=== uint32 (0xCE)
+
+Stores unsigned 32-bit integer (big-endian).
+
+[source]
+----
++--------+--------+--------+--------+--------+
+|  0xCE  |AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA|
++--------+--------+--------+--------+--------+
+
+stores 0-4294967295 in five bytes
+----
+
+=== uint64 (0xCF)
+
+Stores unsigned 64-bit integer (big-endian).
+
+[source]
+----
++--------+--------+--------+--------+--------+--------+--------+--------+--------+
+|  0xCF  |AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA|
++--------+--------+--------+--------+--------+--------+--------+--------+--------+
+
+stores 0-18446744073709551615 in nine bytes
+----
+
+=== int8 (0xD0)
+
+Stores signed 8-bit integer.
+
+[source]
+----
++--------+--------+
+|  0xD0  |ZZZZZZZZ|
++--------+--------+
+
+stores -128 to 127 in two bytes
+----
+
+=== int16 (0xD1)
+
+Stores signed 16-bit integer (big-endian).
+
+=== int32 (0xD2)
+
+Stores signed 32-bit integer (big-endian).
+
+=== int64 (0xD3)
+
+Stores signed 64-bit integer (big-endian).
+
+== Floating point types
+
+=== float32 (0xCA)
+
+Stores IEEE 754 single precision floating point (big-endian).
+
+[source]
+----
++--------+--------+--------+--------+--------+
+|  0xCA  |FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|
++--------+--------+--------+--------+--------+
+
+stores float32 in five bytes
+----
+
+=== float64 (0xCB)
+
+Stores IEEE 754 double precision floating point (big-endian).
+
+[source]
+----
++--------+--------+--------+--------+--------+--------+--------+--------+--------+
+|  0xCB  |FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|
++--------+--------+--------+--------+--------+--------+--------+--------+--------+
+
+stores float64 in nine bytes
+----
+
+== String types
+
+=== fixstr (0xA0 - 0xBF)
+
+Stores strings with length 0-31.
+
+[source]
+----
++--------+========+
+|101XXXXX|  data |
++--------+========+
+
+stores 0-31 byte strings in 2-32 bytes
+----
+
+=== str8 (0xD9)
+
+Stores strings with length 0-255.
+
+[source]
+----
++--------+--------+========+
+|  0xD9  |YYYYYYYY|  data |
++--------+--------+========+
+
+stores 0-255 byte strings in 2-257 bytes
+----
+
+=== str16 (0xDA)
+
+Stores strings with length 0-65535.
+
+[source]
+----
++--------+--------+--------+========+
+|  0xDA  |ZZZZZZZZ|ZZZZZZZZ|  data |
++--------+--------+--------+========+
+
+stores 0-65535 byte strings in 4-65539 bytes
+----
+
+=== str32 (0xDB)
+
+Stores strings with length 0-4294967295.
+
+== Binary types
+
+=== bin8 (0xC4)
+
+Stores binary data with length 0-255.
+
+=== bin16 (0xC5)
+
+Stores binary data with length 0-65535.
+
+=== bin32 (0xC6)
+
+Stores binary data with length 0-4294967295.
+
+== Array types
+
+=== fixarray (0x90 - 0x9F)
+
+Stores arrays with 0-15 elements.
+
+[source]
+----
++--------+~~~~~~~~~~~~~~~~~+
+|1001XXXX|    N objects    |
++--------+~~~~~~~~~~~~~~~~~+
+
+stores 0-15 element arrays
+----
+
+=== array16 (0xDC)
+
+Stores arrays with 0-65535 elements.
+
+=== array32 (0xDD)
+
+Stores arrays with 0-4294967295 elements.
+
+== Map types
+
+=== fixmap (0x80 - 0x8F)
+
+Stores maps with 0-15 key-value pairs.
+
+=== map16 (0xDE)
+
+Stores maps with 0-65535 key-value pairs.
+
+=== map32 (0xDF)
+
+Stores maps with 0-4294967295 key-value pairs.
+
+== Extension types
+
+=== fixext1 (0xD4)
+
+Stores extension with 1 byte data.
+
+=== fixext2 (0xD5)
+
+Stores extension with 2 bytes data.
+
+=== fixext4 (0xD6)
+
+Stores extension with 4 bytes data.
+
+=== fixext8 (0xD7)
+
+Stores extension with 8 bytes data.
+
+=== fixext16 (0xD8)
+
+Stores extension with 16 bytes data.
+
+=== ext8 (0xC7)
+
+Stores extension with length 0-255.
+
+=== ext16 (0xC8)
+
+Stores extension with length 0-65535.
+
+=== ext32 (0xC9)
+
+Stores extension with length 0-4294967295.
+
+== Reserved types
+
+=== nil (0xC0)
+
+Represents nil/null.
+
+[source]
+----
++--------+
+|  0xC0  |
++--------+
+----
+
+=== false (0xC2)
+
+Represents boolean false.
+
+=== true (0xC3)
+
+Represents boolean true.

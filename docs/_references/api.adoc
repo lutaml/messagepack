@@ -1,0 +1,360 @@
+---
+title: API reference
+nav_order: 1
+---
+
+== Purpose
+
+Complete API reference for the MessagePack Ruby library.
+
+== Module: Messagepack
+
+=== pack(value, io = nil)
+
+Serialize a Ruby object to MessagePack binary format.
+
+[source,ruby]
+----
+Messagepack.pack(value) => binary_string
+Messagepack.pack(value, io) => nil
+----
+
+* `value` - The Ruby object to serialize
+* `io` - Optional IO object to write to
+* Returns - Binary string if no IO, nil if writing to IO
+
+[source,ruby]
+----
+binary = Messagepack.pack({hello: "world"})
+File.open("data.msgpack", "wb") { |f| Messagepack.pack(data, f) }
+----
+
+=== unpack(data, options = {})
+
+Deserialize MessagePack binary to a Ruby object.
+
+[source,ruby]
+----
+Messagepack.unpack(data) => object
+Messagepack.unpack(io) => object
+----
+
+* `data` - Binary string or IO object
+* `options` - Hash of options:
+  ** `:symbolize_keys` - Convert hash keys to symbols (default: false)
+* Returns - The deserialized Ruby object
+
+[source,ruby]
+----
+obj = Messagepack.unpack("\x81\xA5hello\xA5world")
+obj = Messagepack.unpack(file)
+obj = Messagepack.unpack(data, symbolize_keys: true)
+----
+
+=== load(data, options = {})
+
+Alias for `unpack`.
+
+=== dump(value, io = nil)
+
+Alias for `pack`.
+
+== Class: Messagepack::Factory
+
+=== new()
+
+Create a new factory instance.
+
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+----
+
+=== register_type(type_id, class, packer:, unpacker:, recursive: false)
+
+Register a custom extension type.
+
+[source,ruby]
+----
+factory.register_type(0x01, MyClass,
+  packer: :to_msgpack_ext,
+  unpacker: :from_msgpack_ext
+)
+
+factory.register_type(0x02, MyContainer,
+  packer: ->(obj, pk) { pk.write(obj.to_h) },
+  unpacker: ->(up) { MyContainer.from_hash(up.read) },
+  recursive: true
+)
+----
+
+* `type_id` - Integer from -128 to 127
+* `class` - Ruby class to register
+* `packer` - Symbol, method, or proc for serialization
+* `unpacker` - Symbol, method, or proc for deserialization
+* `recursive` - Enable recursive packing (default: false)
+
+=== packer()
+
+Create a new packer instance.
+
+[source,ruby]
+----
+packer = factory.packer
+----
+
+=== unpacker()
+
+Create a new unpacker instance.
+
+[source,ruby]
+----
+unpacker = factory.unpacker
+----
+
+=== pack(value, io = nil)
+
+Pack a value using this factory.
+
+[source,ruby]
+----
+binary = factory.pack(value)
+factory.pack(value, io)
+----
+
+=== unpack(data, options = {})
+
+Unpack data using this factory.
+
+[source,ruby]
+----
+obj = factory.unpack(data)
+----
+
+=== pool(size = 4)
+
+Create a thread-safe pool.
+
+[source,ruby]
+----
+pool = factory.pool(10)
+data = pool.pack(object)
+obj = pool.unpack(binary)
+----
+
+=== freeze()
+
+Freeze the factory for thread safety.
+
+[source,ruby]
+----
+factory.freeze
+----
+
+== Class: Messagepack::Packer
+
+=== write(value)
+
+Write a value to the buffer.
+
+[source,ruby]
+----
+packer.write(nil)
+packer.write(42)
+packer.write("hello")
+packer.write([1, 2, 3])
+packer.write({a: 1})
+----
+
+=== to_s
+
+Get the packed binary data.
+
+[source,ruby]
+----
+binary = packer.to_s
+----
+
+=== full_pack
+
+Alias for `to_s`.
+
+=== write_array_header(size)
+
+Write an array header for streaming.
+
+[source,ruby]
+----
+packer.write_array_header(3)
+packer.write(1)
+packer.write(2)
+packer.write(3)
+----
+
+=== write_map_header(size)
+
+Write a map header for streaming.
+
+[source,ruby]
+----
+packer.write_map_header(2)
+packer.write("key1")
+packer.write("value1")
+packer.write("key2")
+packer.write("value2")
+----
+
+== Class: Messagepack::Unpacker
+
+=== new(io = nil, options = {})
+
+Create a new unpacker.
+
+[source,ruby]
+----
+unpacker = Messagepack::Unpacker.new
+unpacker = Messagepack::Unpacker.new(io)
+unpacker = Messagepack::Unpacker.new(symbolize_keys: true)
+----
+
+=== feed(data)
+
+Feed data to the buffer.
+
+[source,ruby]
+----
+unpacker.feed(partial_data)
+unpacker.feed(more_data)
+----
+
+=== read
+
+Read one complete object.
+
+[source,ruby]
+----
+obj = unpacker.read
+# Returns nil if more data needed
+----
+
+=== read_map_header
+
+Read map header and return size.
+
+[source,ruby]
+----
+size = unpacker.read_map_header
+----
+
+=== read_array_header
+
+Read array header and return size.
+
+[source,ruby]
+----
+size = unpacker.read_array_header
+----
+
+=== skip
+
+Skip one complete object.
+
+[source,ruby]
+----
+unpacker.skip
+----
+
+=== feed_each {|obj| ...}
+
+Iterate over objects in the buffer.
+
+[source,ruby]
+----
+unpacker.feed_each(data) do |obj|
+  process(obj)
+end
+----
+
+=== full_unpack
+
+Read one object and reset.
+
+[source,ruby]
+----
+obj = unpacker.full_unpack(data)
+----
+
+== Class: Messagepack::BinaryBuffer
+
+=== new(io = nil)
+
+Create a new buffer.
+
+[source,ruby]
+----
+buffer = Messagepack::BinaryBuffer.new
+buffer = Messagepack::BinaryBuffer.new(io)
+----
+
+=== <<(data)
+
+Append data to buffer.
+
+[source,ruby]
+----
+buffer << "data"
+----
+
+=== read(n)
+
+Read n bytes from buffer.
+
+[source,ruby]
+----
+data = buffer.read(4)
+----
+
+=== to_s
+
+Get remaining data.
+
+[source,ruby]
+----
+data = buffer.to_s
+----
+
+=== skip
+
+Skip one object.
+
+[source,ruby]
+----
+buffer.skip
+----
+
+== Exceptions
+
+=== Messagepack::UnpackError
+
+Base class for unpacking errors.
+
+=== Messagepack::MalformedFormatError
+
+Raised when data is not valid MessagePack format.
+
+[source,ruby]
+----
+begin
+  Messagepack.unpack("invalid")
+rescue Messagepack::MalformedFormatError => e
+  puts e.message
+end
+----
+
+=== Messagepack::StackError
+
+Raised when data is too deeply nested.
+
+=== Messagepack::TypeError
+
+Raised when a type cannot be serialized.

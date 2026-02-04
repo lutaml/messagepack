@@ -3,7 +3,7 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 
-describe MessagePack::ExtensionValue do
+describe Messagepack::ExtensionValue do
   subject do
     described_class.new(1, "data")
   end
@@ -32,24 +32,24 @@ describe MessagePack::ExtensionValue do
 
   describe '#==/#eql?/#hash' do
     it 'returns equivalent if the content is same' do
-      ext1 = MessagePack::ExtensionValue.new(1, "data")
-      ext2 = MessagePack::ExtensionValue.new(1, "data")
+      ext1 = Messagepack::ExtensionValue.new(1, "data")
+      ext2 = Messagepack::ExtensionValue.new(1, "data")
       expect(ext1 == ext2).to be true
       expect(ext1.eql?(ext2)).to be true
       expect(ext1.hash == ext2.hash).to be true
     end
 
     it 'returns not equivalent if type is not same' do
-      ext1 = MessagePack::ExtensionValue.new(1, "data")
-      ext2 = MessagePack::ExtensionValue.new(2, "data")
+      ext1 = Messagepack::ExtensionValue.new(1, "data")
+      ext2 = Messagepack::ExtensionValue.new(2, "data")
       expect(ext1 == ext2).to be false
       expect(ext1.eql?(ext2)).to be false
       expect(ext1.hash == ext2.hash).to be false
     end
 
     it 'returns not equivalent if payload is not same' do
-      ext1 = MessagePack::ExtensionValue.new(1, "data")
-      ext2 = MessagePack::ExtensionValue.new(1, "value")
+      ext1 = Messagepack::ExtensionValue.new(1, "data")
+      ext2 = Messagepack::ExtensionValue.new(1, "value")
       expect(ext1 == ext2).to be false
       expect(ext1.eql?(ext2)).to be false
       expect(ext1.hash == ext2.hash).to be false
@@ -58,23 +58,23 @@ describe MessagePack::ExtensionValue do
 
   describe '#to_msgpack' do
     it 'serializes very short payload' do
-      ext = MessagePack::ExtensionValue.new(1, "a" * 2).to_msgpack
+      ext = Messagepack::ExtensionValue.new(1, "a" * 2).to_msgpack
       expect(ext).to eq(("\xd5\x01" + "a" * 2).b)
     end
 
     it 'serializes short payload' do
-      ext = MessagePack::ExtensionValue.new(1, "a" * 18).to_msgpack
+      ext = Messagepack::ExtensionValue.new(1, "a" * 18).to_msgpack
       expect(ext).to eq(("\xc7\x12\x01" + "a" * 18).b)
     end
 
     it 'serializes long payload' do
-      ext = MessagePack::ExtensionValue.new(1, "a" * 65540).to_msgpack
+      ext = Messagepack::ExtensionValue.new(1, "a" * 65540).to_msgpack
       expect(ext).to eq(("\xc9\x00\x01\x00\x04\x01" + "a" * 65540).b)
     end
 
     it 'with a packer serializes to a packer' do
-      ext = MessagePack::ExtensionValue.new(1, "aa")
-      packer = MessagePack::Packer.new
+      ext = Messagepack::ExtensionValue.new(1, "aa")
+      packer = Messagepack::Packer.new
       ext.to_msgpack(packer)
       expect(packer.buffer.to_s).to eq(("\xd5\x01aa").b)
     end
@@ -82,7 +82,7 @@ describe MessagePack::ExtensionValue do
     [-129, -65540, -(2**40), 128, 65540, 2**40].each do |type|
       context "with invalid type (#{type})" do
         it 'raises RangeError' do
-          expect { MessagePack::ExtensionValue.new(type, "a").to_msgpack }.to raise_error(RangeError)
+          expect { Messagepack::ExtensionValue.new(type, "a").to_msgpack }.to raise_error(RangeError)
         end
       end
     end
@@ -90,7 +90,7 @@ describe MessagePack::ExtensionValue do
 
   describe '#dup' do
     it 'duplicates' do
-      ext1 = MessagePack::ExtensionValue.new(1, "data")
+      ext1 = Messagepack::ExtensionValue.new(1, "data")
       ext2 = ext1.dup
       ext2.type = 2
       ext2.payload = "data2"

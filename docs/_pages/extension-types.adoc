@@ -1,0 +1,117 @@
+---
+title: Extension types
+parent: Core topics
+nav_order: 3
+---
+
+[[extension-types]]
+= Extension types
+
+== Purpose
+
+MessagePack supports custom extension types for serializing objects that don't
+have a native MessagePack representation.
+
+== References
+
+* link:../references/extensions[Extension types reference] - Detailed extension documentation
+* link:../tutorials/extension-types[Custom extension types tutorial] - Step-by-step guide
+
+== Concepts
+
+=== Extension type format
+
+[source,ruby]
+----
+factory.register_type(type_id, class,
+  packer: packer_specification,
+  unpacker: unpacker_specification
+)
+----
+
+Where,
+
+* `type_id` is an integer from -128 to 127
+* `class` is the Ruby class to serialize
+* `packer_specification` can be:
+  ** A symbol (method name to call on the object)
+  ** A proc (called with the object)
+  ** A method object
+* `unpacker_specification` can be:
+  ** A symbol (class method to call)
+  ** A proc (called with the payload data)
+  ** A method object
+
+=== Recursive extension types
+
+[source,ruby]
+----
+factory.register_type(0x02, MyContainer,
+  packer: ->(obj, packer) { packer.write(obj.to_h) },
+  unpacker: ->(unpacker) { MyContainer.from_hash(unpacker.read) },
+  recursive: true
+)
+----
+
+Where,
+
+* `recursive: true` enables nested serialization
+* The `packer` lambda receives the packer instance for recursive calls
+* The `unpacker` lambda receives the unpacker instance for recursive reads
+
+== Examples
+
+.Custom extension type for Money objects
+====
+[source,ruby]
+----
+class Money
+  attr_reader :amount, :currency
+
+  def initialize(amount, currency)
+    @amount = amount
+    @currency = currency
+  end
+
+  def to_msgpack_ext
+    [amount, currency].pack("QA*")
+  end
+
+  def self.from_msgpack_ext(data)
+    amount, currency = data.unpack("QA*")
+    new(amount, currency)
+  end
+end
+
+factory = Messagepack::Factory.new
+factory.register_type(0x10, Money,
+  packer: :to_msgpack_ext,
+  unpacker: :from_msgpack_ext
+)
+
+money = Money.new(1000, "USD")
+binary = factory.pack(money)
+result = factory.unpack(binary)
+# => #<Money:0x... @amount=1000, @currency="USD">
+----
+====
+
+.Using procs for simple serialization
+====
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+
+# Serialize a URI object
+require 'uri'
+factory.register_type(0x20, URI,
+  packer: ->(uri) { uri.to_s },
+  unpacker: ->(str) { URI.parse(str) }
+)
+
+uri = URI.parse("https://example.com/path")
+binary = factory.pack(uri)
+result = factory.unpack(binary)
+# => #<URI::HTTPS https://example.com/path>
+----
+====

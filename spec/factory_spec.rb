@@ -1,13 +1,13 @@
 require 'spec_helper'
 
-describe MessagePack::Factory do
+describe Messagepack::Factory do
   subject do
     described_class.new
   end
 
   describe '#packer' do
     it 'creates a Packer instance' do
-      subject.packer.should be_kind_of(MessagePack::Packer)
+      subject.packer.should be_kind_of(Messagepack::Packer)
     end
 
     it 'creates new instance' do
@@ -17,7 +17,7 @@ describe MessagePack::Factory do
 
   describe '#unpacker' do
     it 'creates a Unpacker instance' do
-      subject.unpacker.should be_kind_of(MessagePack::Unpacker)
+      subject.unpacker.should be_kind_of(Messagepack::Unpacker)
     end
 
     it 'creates new instance' do
@@ -26,20 +26,20 @@ describe MessagePack::Factory do
 
     it 'creates unpacker with symbolize_keys option' do
       unpacker = subject.unpacker(symbolize_keys: true)
-      unpacker.feed(MessagePack.pack({'k'=>'v'}))
+      unpacker.feed(Messagepack.pack({'k'=>'v'}))
       unpacker.read.should == {:k => 'v'}
     end
 
     it 'creates unpacker with allow_unknown_ext option' do
       unpacker = subject.unpacker(allow_unknown_ext: true)
-      unpacker.feed(MessagePack::ExtensionValue.new(1, 'a').to_msgpack)
-      unpacker.read.should == MessagePack::ExtensionValue.new(1, 'a')
+      unpacker.feed(Messagepack::ExtensionValue.new(1, 'a').to_msgpack)
+      unpacker.read.should == Messagepack::ExtensionValue.new(1, 'a')
     end
 
     it 'creates unpacker without allow_unknown_ext option' do
       unpacker = subject.unpacker
-      unpacker.feed(MessagePack::ExtensionValue.new(1, 'a').to_msgpack)
-      expect{ unpacker.read }.to raise_error(MessagePack::UnknownExtTypeError)
+      unpacker.feed(Messagepack::ExtensionValue.new(1, 'a').to_msgpack)
+      expect{ unpacker.read }.to raise_error(Messagepack::UnknownExtTypeError)
     end
 
     it 'does not share the extension registry with unpackers' do
@@ -70,7 +70,7 @@ describe MessagePack::Factory do
     end
 
     it 'accept options' do
-      hash = subject.unpack(MessagePack.pack('k' => 'v'), symbolize_keys: true)
+      hash = subject.unpack(Messagepack.pack('k' => 'v'), symbolize_keys: true)
       expect(hash).to be == { k: 'v' }
     end
   end
@@ -80,7 +80,7 @@ describe MessagePack::Factory do
       subject.register_type(0x00, Symbol)
       subject.freeze
       expect(subject.frozen?).to be_truthy
-      expect{ subject.register_type(0x01, Array) }.to raise_error(FrozenError, "can't modify frozen MessagePack::Factory")
+      expect{ subject.register_type(0x01, Array) }.to raise_error(FrozenError, "can't modify frozen Messagepack::Factory")
     end
   end
 
@@ -268,20 +268,20 @@ describe MessagePack::Factory do
     end
 
     it 'handles Symbol type with `packer: nil`' do
-      factory = MessagePack::Factory.new
+      factory = Messagepack::Factory.new
       factory.register_type(0x00, Symbol, packer: nil)
       expect(factory.load(factory.dump(:foo))).to be == "foo"
     end
 
     describe "registering multiple ext type for the same class" do
       let(:payload) do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x01, Symbol, packer: :to_s, unpacker: :to_sym.to_proc)
         factory.dump(:foobar)
       end
 
       it "select the type based on code for deserialization" do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x00, Symbol, packer: -> (value) { raise NotImplementedError }, unpacker:  -> (value) { raise NotImplementedError })
         factory.register_type(0x01, Symbol, packer: :to_s, unpacker: :to_sym.to_proc)
         factory.register_type(0x02, Symbol, packer: -> (value) { raise NotImplementedError }, unpacker:  -> (value) { raise NotImplementedError })
@@ -290,7 +290,7 @@ describe MessagePack::Factory do
       end
 
       it "uses the last registered packer for serialization" do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x00, Symbol, packer: -> (value) { raise NotImplementedError }, unpacker:  -> (value) { raise NotImplementedError })
         factory.register_type(0x02, Symbol, packer: -> (value) { raise NotImplementedError }, unpacker:  -> (value) { raise NotImplementedError })
         factory.register_type(0x01, Symbol, packer: :to_s, unpacker: :to_sym.to_proc)
@@ -367,7 +367,7 @@ describe MessagePack::Factory do
           oversized_integer_extension: true
         )
 
-        expect(factory.dump(42)).to eq(MessagePack.dump(42))
+        expect(factory.dump(42)).to eq(Messagepack.dump(42))
       end
     end
 
@@ -377,7 +377,7 @@ describe MessagePack::Factory do
       end
 
       it 'can receive the packer as argument (proc)' do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x00, Symbol)
         factory.register_type(
           0x01,
@@ -410,7 +410,7 @@ describe MessagePack::Factory do
           Point.new(attrs.fetch(:x), attrs.fetch(:y), attrs.fetch(:z))
         end
 
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x00, Symbol)
         factory.register_type(
           0x01,
@@ -426,7 +426,7 @@ describe MessagePack::Factory do
       end
 
       it 'respect message pack format' do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x00, Symbol)
         factory.register_type(
           0x01,
@@ -443,11 +443,11 @@ describe MessagePack::Factory do
         )
 
         point = Point.new(1, 2, 3)
-        expect(factory.dump(point)).to be == "\xD6\x01".b + MessagePack.dump([1, 2, 3])
+        expect(factory.dump(point)).to be == "\xD6\x01".b + Messagepack.dump([1, 2, 3])
       end
 
       it 'sets the correct length' do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(0x00, Symbol)
         factory.register_type(
           0x01,
@@ -466,10 +466,10 @@ describe MessagePack::Factory do
         point = Point.new(1, 2, 3)
         payload = factory.dump([1, point, 3])
 
-        obj = MessagePack::Factory.new.load(payload, allow_unknown_ext: true)
+        obj = Messagepack::Factory.new.load(payload, allow_unknown_ext: true)
         expect(obj).to be == [
           1,
-          MessagePack::ExtensionValue.new(1, factory.dump(x: 1, y: 2, z: 3)),
+          Messagepack::ExtensionValue.new(1, factory.dump(x: 1, y: 2, z: 3)),
           3,
         ]
 
@@ -481,7 +481,7 @@ describe MessagePack::Factory do
       end
 
       it 'can be nested' do
-        factory = MessagePack::Factory.new
+        factory = Messagepack::Factory.new
         factory.register_type(
           0x02,
           Set,
@@ -631,7 +631,7 @@ describe MessagePack::Factory do
       begin
         GC.stress = true
 
-        f = MessagePack::Factory.new
+        f = Messagepack::Factory.new
         f.register_type(0x0a, Symbol)
       ensure
         GC.stress = false
@@ -640,7 +640,7 @@ describe MessagePack::Factory do
 
     it 'does not crash in recursive extensions' do
       my_hash_type = Class.new(Hash)
-      factory = MessagePack::Factory.new
+      factory = Messagepack::Factory.new
       factory.register_type(7,
         my_hash_type,
         packer: ->(value, packer) do
@@ -665,22 +665,22 @@ describe MessagePack::Factory do
 
   describe 'DefaultFactory' do
     it 'is a factory' do
-      MessagePack::DefaultFactory.should be_kind_of(MessagePack::Factory)
+      Messagepack::DefaultFactory.should be_kind_of(Messagepack::Factory)
     end
 
     require_relative 'exttypes'
 
-    it 'should be referred by MessagePack.pack and MessagePack.unpack' do
-      MessagePack::DefaultFactory.register_type(DummyTimeStamp1::TYPE, DummyTimeStamp1)
-      MessagePack::DefaultFactory.register_type(DummyTimeStamp2::TYPE, DummyTimeStamp2, packer: :serialize, unpacker: :deserialize)
+    it 'should be referred by Messagepack.pack and Messagepack.unpack' do
+      Messagepack::DefaultFactory.register_type(DummyTimeStamp1::TYPE, DummyTimeStamp1)
+      Messagepack::DefaultFactory.register_type(DummyTimeStamp2::TYPE, DummyTimeStamp2, packer: :serialize, unpacker: :deserialize)
 
       t = Time.now
 
       dm1 = DummyTimeStamp1.new(t.to_i, t.usec)
-      expect(MessagePack.unpack(MessagePack.pack(dm1))).to eq(dm1)
+      expect(Messagepack.unpack(Messagepack.pack(dm1))).to eq(dm1)
 
       dm2 = DummyTimeStamp1.new(t.to_i, t.usec)
-      expect(MessagePack.unpack(MessagePack.pack(dm2))).to eq(dm2)
+      expect(Messagepack.unpack(Messagepack.pack(dm2))).to eq(dm2)
     end
   end
 
@@ -718,7 +718,7 @@ describe MessagePack::Factory do
         pool.packer do |packer|
           packer.register_type(0x20, ::MyType) { "type" }
         end
-      end.to raise_error(FrozenError, "can't modify frozen MessagePack::Packer")
+      end.to raise_error(FrozenError, "can't modify frozen Messagepack::Packer")
     end
 
     it '#unpacker does not allow to register types' do
@@ -727,7 +727,7 @@ describe MessagePack::Factory do
         pool.unpacker do |unpacker|
           unpacker.register_type(0x20, ::MyType) { "type" }
         end
-      end.to raise_error(FrozenError, "can't modify frozen MessagePack::Unpacker")
+      end.to raise_error(FrozenError, "can't modify frozen Messagepack::Unpacker")
     end
 
     it 'types can be registered before the pool is created' do
@@ -747,7 +747,7 @@ describe MessagePack::Factory do
       payload = factory.dump(MyType.new(1, 2))
       expect do
         pool.load(payload)
-      end.to raise_error MessagePack::UnknownExtTypeError
+      end.to raise_error Messagepack::UnknownExtTypeError
     end
 
     it 'support symbolize_keys: true' do

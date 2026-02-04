@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # MessagePack extension packer and unpacker for built-in Time class
-module MessagePack
+module Messagepack
   module Time
     # 3-arg Time.at is available Ruby >= 2.5
     TIME_AT_3_AVAILABLE = begin
@@ -12,18 +12,18 @@ module MessagePack
 
     Unpacker = if TIME_AT_3_AVAILABLE
                  lambda do |payload|
-                   tv = MessagePack::Timestamp.from_msgpack_ext(payload)
+                   tv = Messagepack::Timestamp.from_msgpack_ext(payload)
                    ::Time.at(tv.sec, tv.nsec, :nanosecond)
                  end
                else
                  lambda do |payload|
-                   tv = MessagePack::Timestamp.from_msgpack_ext(payload)
+                   tv = Messagepack::Timestamp.from_msgpack_ext(payload)
                    ::Time.at(tv.sec, tv.nsec / 1000.0r)
                  end
                end
 
     Packer = lambda { |time|
-      MessagePack::Timestamp.to_msgpack_ext(time.tv_sec, time.tv_nsec)
+      Messagepack::Timestamp.to_msgpack_ext(time.tv_sec, time.tv_nsec)
     }
   end
 end

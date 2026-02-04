@@ -1,0 +1,77 @@
+---
+title: MessagePack Ruby
+nav_order: 1
+---
+
+== Purpose
+
+MessagePack Ruby is a pure Ruby implementation of the https://msgpack.org/[MessagePack] binary serialization format. MessagePack is an efficient binary serialization format that enables exchange of data among multiple languages like JSON, but is faster and smaller.
+
+This implementation provides:
+
+* Pure Ruby implementation (no C extension required)
+* Full compatibility with the MessagePack specification
+* Support for custom extension types
+* Thread-safe factory pattern for packer/unpacker reuse
+* Streaming unpacker for incremental parsing
+* Comprehensive timestamp support with nanosecond precision
+
+== Getting started
+
+=== Installation
+
+Add this line to your application's Gemfile:
+
+[source,ruby]
+----
+gem 'messagepack'
+----
+
+And then execute:
+
+[source,shell]
+----
+bundle install
+----
+
+Or install it yourself as:
+
+[source,shell]
+----
+gem install messagepack
+----
+
+=== Quick start
+
+[source,ruby]
+----
+require 'messagepack'
+
+# Serialize data
+data = { hello: "world", count: 42 }
+binary = Messagepack.pack(data)
+
+# Deserialize data
+result = Messagepack.unpack(binary)
+# => {"hello"=>"world", "count"=>42}
+----
+
+== Core concepts
+
+* link:pages/serialization[Serialization] - Converting Ruby objects to binary format and back
+* link:pages/factory-pattern[Factory pattern] - Thread-safe packer/unpacker management
+* link:pages/extension-types[Extension types] - Custom type registration system
+* link:pages/buffer[Buffer management] - Efficient chunked binary data storage
+* link:pages/streaming[Streaming] - Incremental data parsing
+
+== Learn more
+
+* link:tutorials/getting-started[Getting started tutorial] - Step-by-step introduction
+* link:guides/performance[Performance guide] - Optimization techniques and best practices
+* link:references/api[API reference] - Complete API documentation
+
+== External resources
+
+* https://msgpack.org/[MessagePack specification] - Official format specification
+* https://github.com/msgpack/msgpack/blob/master/spec.md[MessagePack spec] - Detailed format documentation
+* https://github.com/lutaml/messagepack[GitHub repository] - Source code and issues

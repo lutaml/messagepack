@@ -1,0 +1,115 @@
+---
+title: Factory pattern
+parent: Core topics
+nav_order: 2
+---
+
+[[factory-pattern]]
+= Factory pattern
+
+== Purpose
+
+The `Messagepack::Factory` class provides thread-safe management of packer and
+unpacker instances with support for custom type registrations.
+
+== References
+
+* link:../references/api[API reference] - Factory class documentation
+* link:../guides/thread-safety[Thread-safe usage tutorial] - Multi-threading best practices
+
+== Concepts
+
+=== Creating a factory
+
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+----
+
+Where,
+
+* `Factory.new` creates a new factory instance
+* Each factory maintains its own type registry
+* Factories can be frozen for thread-safe use
+
+=== Registering custom types
+
+[source,ruby]
+----
+factory.register_type(0x01, MyClass,
+  packer: :to_msgpack_ext,
+  unpacker: :from_msgpack_ext
+)
+----
+
+Where,
+
+* `0x01` is the type identifier (must be -128 to 127)
+* `MyClass` is the Ruby class to register
+* `packer` specifies how to serialize instances (symbol, method, or proc)
+* `unpacker` specifies how to deserialize data (symbol, method, or proc)
+
+=== Using factory pool for thread safety
+
+[source,ruby]
+----
+pool = factory.pool(5) # Create pool with 5 packers/unpackers
+data = pool.pack(my_object)  # Thread-safe packing
+obj = pool.unpack(binary)    # Thread-safe unpacking
+----
+
+Where,
+
+* `factory.pool(size)` creates a thread-safe pool
+* `size` is the number of packer/unpacker instances in the pool
+* The pool automatically manages instance reuse
+* Each thread gets its own instance from the pool
+
+== Examples
+
+.Thread-safe factory usage
+====
+[source,ruby]
+----
+# Create a factory with custom types
+factory = Messagepack::Factory.new
+factory.register_type(0x01, MyCustomClass,
+  packer: ->(obj) { obj.serialize },
+  unpacker: ->(data) { MyCustomClass.deserialize(data) }
+)
+
+# Create a thread-safe pool
+pool = factory.pool(10)
+
+# Use from multiple threads safely
+threads = 10.times.map do |i|
+  Thread.new do
+    object = MyCustomClass.new("data-#{i}")
+    binary = pool.pack(object)
+    result = pool.unpack(binary)
+    result.value
+  end
+end
+
+puts threads.map(&:value).inspect
+----
+====
+
+.Pool size and performance
+====
+[source,ruby]
+----
+# Create factory
+factory = Messagepack::Factory.new
+
+# Pool size should match expected concurrent threads
+# Too small: threads wait for available instances
+# Too much: wasted memory
+
+pool = factory.pool(4)  # Match your thread pool size
+
+# Default factory is also available
+Messagepack.pack(data)   # Uses DefaultFactory internally
+Messagepack::DefaultFactory.register_type(0x01, MyClass, ...)
+----
+====

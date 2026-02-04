@@ -6,9 +6,11 @@ image:https://github.com/lutaml/messagepack/actions/workflows/rake.yml/badge.svg
 
 == Purpose
 
-MessagePack is a pure Ruby implementation of the MessagePack binary serialization
-format. MessagePack is an efficient binary serialization format that enables
-exchange of data among multiple languages like JSON, but is faster and smaller.
+MessagePack is a pure Ruby implementation of the
+https://msgpack.org[MessagePack binary serialization format].
+
+MessagePack is an efficient binary serialization format that enables exchange of
+data among multiple languages like JSON, but is faster and smaller.
 
 This implementation provides:
 
@@ -22,54 +24,63 @@ This implementation provides:
 == Features
 
 * link:#core-serialization[Core serialization] - Basic pack and unpack operations
+* link:#performance-optimizations[Performance optimizations] - Efficient native type handling and buffer management
 * link:#factory-pattern[Factory pattern] - Thread-safe packer/unpacker management
 * link:#extension-types[Extension types] - Custom type registration system
 * link:#timestamp-extension[Timestamp extension] - Nanosecond precision time handling
 * link:#symbol-extension[Symbol extension] - Efficient symbol serialization
 * link:#streaming-unpacking[Streaming unpacking] - Incremental data parsing
 * link:#buffer-management[Buffer management] - Chunked binary data storage
+* link:#implementation-details[Implementation details] - Pure Ruby implementation architecture
 
 == Architecture
 
 .MessagePack serialization architecture
 [source]
 ----
-═══════════════════════════════════════════════════════════════════════════
-                              User Application
-                                    │
-                    ╭───────────────┴────────────────╮
-                    │                                │
-            ╌═══════════════════╌            ╌═══════════════════╌
-            │   MessagePack API  │            │   Factory Pattern  │
-            │  .pack / .unpack   │            │   (thread-safe)    │
-            ╌═══════════════════╌            ╌═══════════════════╌
-                    │                                │
-            ╭───────┴────────┐              ╭───────┴────────┐
-            │                │              │                │
-      ╌═════╪═════╌    ╌═════╪═════╌  ╌═════╪══════╌   ╌═════╪═════╌
-      │ Packer │    │ Unpacker │  │  Packer Pool  │ │Unpacker Pool│
-      ╌═════════╌    ╌═════════╌  ╌═══════════════╌ ╌═════════════╌
-            │                │              │                │
-            └────────┬───────┘              └────────┬───────┘
-                     │                               │
-            ╌════════╪═══════════════════════════════╪════════════╌
-            │       BinaryBuffer (chunked storage)    │            │
-            │  ╔═════════════════════════════════════╗ │            │
-            │  ║  Chunk 1 │ Chunk 2 │ Chunk 3 │ ...  ║ │            │
-            │  ╚═════════════════════════════════════╝ │            │
-            ╌══════════════════════════════════════════════════════╌
-                     │
-            ╌════════╪════════════════════════════════════════════╌
-            │    Extension Registry (type mappings)               │
-            │  - Timestamp (-1)  - Symbol (0)                     │
-            ╌══════════════════════════════════════════════════════╌
+  ┌───────────────────────────────────────────────────────────┐
+  │                       User Application                    │
+  └──────────────────────────┬────────────────────────────────┘
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+        ┌───────────────┐        ┌──────────────────┐
+        │ MessagePack   │        │  Factory Pattern │
+        │ .pack/unpack  │        │  (thread-safe)   │
+        └───────┬───────┘        └────────┬─────────┘
+                │                         │
+        ┌───────┴──────┐          ┌───────┴──────────┐
+        │              │          │                  │
+    ┌────────┐  ┌──────────┐   ┌──────────┐  ┌─────────────┐
+    │ Packer │  │ Unpacker │   │ Packer   │  │ Unpacker    │
+    │        │  │          │   │ Pool     │  │ Pool        │
+    └──┬─────┘  └─────┬────┘   └────┬─────┘  └────┬────────┘
+       │              │             │             │
+       └─────┬────────┘             └──────┬──────┘
+             │                             │
+       ┌─────┴─────────────────────────────┴────────┐
+       │    ┌──────────────────────────────────┐    │
+       │    │   BinaryBuffer (chunked)         │    │
+       │    │                                  │    │
+       │    │  ┌────┬────┬────┬────┬─ ─ ─┐     │    │
+       │    │  │  1 │  2 │  3 │  4 │  N  │     │    │
+       │    │  └────┴────┴────┴────┴─ ─ ─┘     │    │
+       │    └──────────────────────────────────┘    │
+       │    ┌──────────────────────────────────┐    │
+       │    │ Extension Registry               │    │
+       │    │                                  │    │
+       │    │  Timestamp (-1)                  │    │
+       │    │  Symbol (0)                      │    │
+       │    │  Custom Types (1-127, -2 to -128)│    │
+       │    └──────────────────────────────────┘    │
+       └────────────────────────────────────────────┘
 ----
 
 .MessagePack format encoding
 [source]
 ----
 ┌──────────────────────────────────────────────────────────────────┐
-│                     MessagePack Binary Format                   │
+│                     MessagePack Binary Format                    │
 └──────────────────────────────────────────────────────────────────┘
 
   Positive Fixnum ────────┐
@@ -150,36 +161,36 @@ serializing and deserializing Ruby objects.
 
 === Packing objects
 
-Use `MessagePack.pack` to serialize Ruby objects to binary format:
+Use `Messagepack.pack` to serialize Ruby objects to binary format:
 
 [source,ruby]
 ----
-MessagePack.pack({hello: "world"}) # => "\x81\xA5hello\xA5world"
+Messagepack.pack({hello: "world"}) # => "\x81\xA5hello\xA5world"
 ----
 
 Where,
 
-* `MessagePack.pack` accepts any Ruby object as its argument
+* `Messagepack.pack` accepts any Ruby object as its argument
 * The return value is a binary string containing the serialized data
 * Supported types include: nil, boolean, integer, float, string, array,
   hash, and any registered extension types
 
 === Unpacking data
 
-Use `MessagePack.unpack` to deserialize binary data back to Ruby objects:
+Use `Messagepack.unpack` to deserialize binary data back to Ruby objects:
 
 [source,ruby]
 ----
-data = MessagePack.pack({hello: "world"})
-MessagePack.unpack(data) # => {"hello"=>"world"}
+data = Messagepack.pack({hello: "world"})
+Messagepack.unpack(data) # => {"hello"=>"world"}
 ----
 
 Where,
 
-* `MessagePack.unpack` accepts a binary string or IO object
+* `Messagepack.unpack` accepts a binary string or IO object
 * The return value is the original Ruby object
 * Extra bytes after the deserialized object will raise a
-  `MessagePack::MalformedFormatError`
+  `Messagepack::MalformedFormatError`
 
 .Using pack and unpack
 ====
@@ -196,13 +207,13 @@ data = {
   }
 }
 
-binary = MessagePack.pack(data)
+binary = Messagepack.pack(data)
 # => "\x84\xA4name\xA5Alice\xA3age\x1E\xA6skills\
 #     \x92\xA4Ruby\xA6Python\xA8metadata\x82\xA6active\
 #     \xC3\xA5score\xCB@_\x00\x00"
 
 # Deserialize back to a Ruby object
-result = MessagePack.unpack(binary)
+result = Messagepack.unpack(binary)
 # => {"name"=>"Alice", "age"=>30, "skills"=>["Ruby", "Python"],
 #     "metadata"=>{"active"=>true, "score"=>95.5}}
 ----
@@ -210,14 +221,14 @@ result = MessagePack.unpack(binary)
 
 == Factory pattern
 
-The `MessagePack::Factory` class provides thread-safe management of packer and
+The `Messagepack::Factory` class provides thread-safe management of packer and
 unpacker instances with support for custom type registrations.
 
 === Creating a factory
 
 [source,ruby]
 ----
-factory = MessagePack::Factory.new
+factory = Messagepack::Factory.new
 ----
 
 Where,
@@ -264,7 +275,7 @@ Where,
 [source,ruby]
 ----
 # Create a factory with custom types
-factory = MessagePack::Factory.new
+factory = Messagepack::Factory.new
 factory.register_type(0x01, MyCustomClass,
   packer: ->(obj) { obj.serialize },
   unpacker: ->(data) { MyCustomClass.deserialize(data) }
@@ -354,7 +365,7 @@ class Money
   end
 end
 
-factory = MessagePack::Factory.new
+factory = Messagepack::Factory.new
 factory.register_type(0x10, Money,
   packer: :to_msgpack_ext,
   unpacker: :from_msgpack_ext
@@ -396,25 +407,25 @@ Timestamp96 - 12 bytes (seconds + nanoseconds, 96-bit)
 [source,ruby]
 ----
 factory.register_type(-1, Time,
-  packer: MessagePack::Time::Packer,
-  unpacker: MessagePack::Time::Unpacker
+  packer: Messagepack::Time::Packer,
+  unpacker: Messagepack::Time::Unpacker
 )
 ----
 
 Where,
 
 * `-1` is the reserved type ID for timestamps
-* `MessagePack::Time::Packer` handles serialization with nanosecond precision
-* `MessagePack::Time::Unpacker` handles deserialization
+* `Messagepack::Time::Packer` handles serialization with nanosecond precision
+* `Messagepack::Time::Unpacker` handles deserialization
 
 .Timestamp serialization examples
 ====
 [source,ruby]
 ----
-factory = MessagePack::Factory.new
+factory = Messagepack::Factory.new
 factory.register_type(-1, Time,
-  packer: MessagePack::Time::Packer,
-  unpacker: MessagePack::Time::Unpacker
+  packer: Messagepack::Time::Packer,
+  unpacker: Messagepack::Time::Unpacker
 )
 
 # Current time with nanosecond precision
@@ -470,7 +481,7 @@ Where,
 ====
 [source,ruby]
 ----
-factory = MessagePack::Factory.new
+factory = Messagepack::Factory.new
 factory.register_type(0, Symbol)
 
 data = {
@@ -494,7 +505,7 @@ becomes available.
 
 [source,ruby]
 ----
-unpacker = MessagePack::Unpacker.new
+unpacker = Messagepack::Unpacker.new
 unpacker.feed("\x81")       # Feed partial data
 unpacker.feed("\xA3")       # Feed more
 unpacker.feed("foo")        # Feed final part
@@ -511,7 +522,7 @@ Where,
 
 [source,ruby]
 ----
-unpacker = MessagePack::Unpacker.new(io)
+unpacker = Messagepack::Unpacker.new(io)
 obj = unpacker.read         # Reads from IO as needed
 ----
 
@@ -528,7 +539,7 @@ Where,
 require 'socket'
 
 # Simulate receiving data in chunks
-unpacker = MessagePack::Unpacker.new
+unpacker = Messagepack::Unpacker.new
 
 chunks = ["\x81\xA3", "foo", "\xA5", "world"]
 
@@ -550,15 +561,15 @@ end
 ----
 ====
 
-== Buffer Management
+== Buffer management
 
 The `BinaryBuffer` class provides efficient chunked storage for binary data.
 
-=== Buffer Operations
+=== Buffer operations
 
 [source,ruby]
 ----
-buffer = MessagePack::BinaryBuffer.new
+buffer = Messagepack::BinaryBuffer.new
 buffer << "data"
 buffer.read(4)             # => "data"
 buffer.to_s                # => ""
@@ -571,11 +582,11 @@ Where,
 * `read(n)` reads and consumes n bytes
 * `to_s` returns remaining data without consuming
 
-=== Skip Operations
+=== Skip operations
 
 [source,ruby]
 ----
-buffer = MessagePack::BinaryBuffer.new
+buffer = Messagepack::BinaryBuffer.new
 buffer << "\x81\xA3foo\xA5world"
 buffer.skip              # Skip one object (format byte)
 buffer.skip_nil          # Skip nil value if present
@@ -591,8 +602,8 @@ Where,
 [source,ruby]
 ----
 File.open("data.msgpack", "rb") do |io|
-  buffer = MessagePack::BinaryBuffer.new(io)
-  unpacker = MessagePack::Unpacker.new(buffer)
+  buffer = Messagepack::BinaryBuffer.new(io)
+  unpacker = Messagepack::Unpacker.new(buffer)
   obj = unpacker.read
 end
 ----
@@ -608,8 +619,8 @@ Where,
 [source,ruby]
 ----
 # Process a large file without loading everything into memory
-buffer = MessagePack::BinaryBuffer.new(File.open("large.msgpack", "rb"))
-unpacker = MessagePack::Unpacker.new(buffer)
+buffer = Messagepack::BinaryBuffer.new(File.open("large.msgpack", "rb"))
+unpacker = Messagepack::Unpacker.new(buffer)
 
 while obj = unpacker.read
   # Process each object one at a time
@@ -617,6 +628,143 @@ while obj = unpacker.read
 end
 ----
 ====
+
+== Performance optimizations
+
+This implementation includes several performance optimizations that make the pure
+Ruby implementation efficient for typical use cases.
+
+=== Native type fast-path
+
+Native MessagePack types (nil, boolean, integer, float, string, symbol, array, hash)
+bypass the extension registry lookup for optimal performance:
+
+* Native types are identified without O(n) registry search
+* Native types with custom extension registrations still use the registry
+* Custom types pay the registry lookup cost as expected
+
+This means that even with many registered extension types, packing native objects
+remains fast.
+
+=== Buffer chunk coalescing
+
+The buffer uses automatic chunk coalescing to reduce memory allocations and improve
+throughput:
+
+* Small writes (< 512 bytes) are merged into larger chunks
+* Reduces the number of string objects in memory
+* Improves `to_s` performance by reducing chunk count
+* Optimized for common patterns like many small integer writes
+
+=== Buffer read optimization
+
+The buffer's `to_s` method has a fast-path for when reading from the beginning
+(position 0), which is the common case for packers:
+
+* Uses `join` for efficient string concatenation
+* Skips offset calculations when position is at 0
+* Significantly faster for single-pass operations
+
+.Performance comparison
+====
+[source,ruby]
+----
+# Native type performance (unaffected by registry size)
+Messagepack.pack(nil)           # ~673k ops/sec
+Messagepack.pack(42)           # ~607k ops/sec
+Messagepack.pack("hello")     # ~498k ops/sec
+Messagepack.pack([1,2,3])     # ~230k ops/sec
+Messagepack.pack({a: 1, b: 2}) # ~159k ops/sec
+
+# Buffer operations
+# With coalescing: 1000 small writes = ~4.7k ops/sec
+# Without coalescing: ~3.7k ops/sec (+28% improvement)
+----
+
+====
+
+== Implementation details
+
+=== Pure Ruby architecture
+
+This implementation is written entirely in Ruby without any C extensions, providing:
+
+* **Portability** - Runs on any Ruby implementation (MRI, JRuby, TruffleRuby, etc.)
+* **Safety** - No memory corruption risks from native code
+* **Debuggability** - Easy to debug with standard Ruby tools
+* **Maintainability** - Pure Ruby code is easier to understand and modify
+
+=== Binary buffer design
+
+The `BinaryBuffer` class uses a chunked storage design:
+
+[source]
+----
+BinaryBuffer
+├── Chunks (array)
+│   ├── Chunk 1 (data)
+│   ├── Chunk 2 (data)
+│   └── Chunk N (data)
+├── Position (read cursor)
+└── Length (total bytes)
+----
+
+Where,
+
+* `Chunks` - Array of binary strings holding data
+* `Position` - Current read position across all chunks
+* `Length` - Total bytes across all chunks
+* Coalescing threshold - Small writes (< 512 bytes) are merged
+
+This design provides:
+
+* **Efficient appends** - New data creates chunks, small writes merge
+* **Zero-copy reads** - Data is read without copying when possible
+* **Memory efficiency** - Unused chunks can be garbage collected
+* **IO integration** - Can read from IO objects on demand
+
+=== Extension registry
+
+The extension registry provides type mapping for custom serialization:
+
+[source]
+----
+ExtensionRegistry::Packer
+├── @registry - Hash of class => [type_id, proc, flags]
+└── @cache - Hash of class => [type_id, proc, flags] (ancestor cache)
+
+ExtensionRegistry::Unpacker
+└── @array - Array[256] of [class, proc, flags] indexed by type_id
+----
+
+Where,
+
+* Packer registry uses O(1) hash lookup for direct class matches
+* Ancestor search is O(n) but cached after first lookup
+* Unpacker registry uses O(1) array lookup by type ID
+* Flags control recursive packing and oversized integer handling
+
+=== Type dispatch
+
+The packer uses a type dispatch system for efficient serialization:
+
+[source]
+----
+Packer#write(value)
+├── Fast-path check (native type?)
+│   ├── Yes → Skip registry, use native serialization
+│   └── No → Check registry
+│       ├── Found in registry → Use extension packer
+│       └── Not found → Check to_msgpack method
+└── Case statement dispatch → Type-specific writer
+----
+
+This ensures:
+
+* Native types are serialized without overhead
+* Registered custom types use their packers
+* Unknown types can implement `to_msgpack` for compatibility
+
 
 == Copyright and license
 

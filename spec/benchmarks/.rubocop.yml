@@ -1,0 +1,21 @@
+# Rubocop configuration for benchmark files
+
+# Benchmark files often have longer methods for clarity
+Metrics/MethodLength:
+  Enabled: false
+
+# Benchmark files have more complex logic for comparisons
+Metrics/AbcSize:
+  Enabled: false
+
+# Benchmark code often uses blocks with specific patterns
+Style/OptionalBooleanParameter:
+  Enabled: false
+
+# Each iteration needs both label and block
+Style/HashEachMethods:
+  Enabled: false
+
+# Placeholder methods may have unused parameters
+Lint/UnusedMethodArgument:
+  Enabled: false

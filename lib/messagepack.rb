@@ -21,7 +21,7 @@ require_relative 'messagepack/core_ext'
 # This is a pure Ruby implementation of the MessagePack specification.
 # See https://msgpack.org/ for more information.
 #
-module MessagePack
+module Messagepack
   # Buffer class alias for backward compatibility
   Buffer = BinaryBuffer
 
@@ -30,11 +30,11 @@ module MessagePack
   # Register built-in extension types
 
   # Timestamp extension (-1) for Time class
-  DefaultFactory.register_type(-1, Time,
+  DefaultFactory.register_type(-1, ::Time,
     packer: ->(time) { Timestamp.to_msgpack_ext(time.tv_sec, time.tv_nsec) },
     unpacker: ->(data) {
       tv = Timestamp.from_msgpack_ext(data)
-      Time.at(tv.sec, tv.nsec, :nanosecond)
+      ::Time.at(tv.sec, tv.nsec, :nanosecond)
     }
   )
 

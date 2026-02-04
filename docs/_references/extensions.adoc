@@ -1,0 +1,198 @@
+---
+title: Extension types reference
+nav_order: 3
+---
+
+== Purpose
+
+Reference for built-in and custom extension types in MessagePack Ruby.
+
+== Concepts
+
+Extension types allow serialization of objects that don't have native MessagePack
+representations. Each extension type has:
+
+* **Type ID** - An integer from -128 to 127
+* **Packer** - Method to convert object to binary
+* **Unpacker** - Method to reconstruct object from binary
+
+== Built-in extension types
+
+=== Timestamp (-1)
+
+Type ID: -1 (reserved by MessagePack specification)
+
+Serializes Time objects with nanosecond precision.
+
+==== Format selection
+
+The implementation automatically selects the most compact format:
+
+* **Timestamp32** (4 bytes) - Seconds only, fits in 32 bits
+* **Timestamp64** (8 bytes) - Seconds + nanoseconds, fits in 64 bits
+* **Timestamp96** (12 bytes) - Full precision
+
+[source,ruby]
+----
+factory.register_type(-1, Time,
+  packer: Messagepack::Time::Packer,
+  unpacker: Messagepack::Time::Unpacker
+)
+----
+
+==== Registration
+
+The default factory includes timestamp registration:
+
+[source,ruby]
+----
+# Already registered in DefaultFactory
+Messagepack::DefaultFactory.register_type(-1, Time,
+  packer: Messagepack::Time::Packer,
+  unpacker: Messagepack::Time::Unpacker
+)
+----
+
+==== Example
+
+[source,ruby]
+----
+# Current time with nanoseconds
+now = Time.now
+binary = factory.pack(now)
+restored = factory.unpack(binary)
+
+# Nanoseconds are preserved
+puts restored.tv_nsec
+----
+
+=== Symbol (0)
+
+Type ID: 0 (common convention, not reserved)
+
+Efficiently serializes Ruby symbols.
+
+[source,ruby]
+----
+factory.register_type(0, Symbol,
+  packer: ->(sym) { sym.to_s },
+  unpacker: ->(str) { str.to_sym }
+)
+----
+
+NOTE: The symbol extension is not registered by default.
+
+==== Example
+
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+factory.register_type(0, Symbol)
+
+data = { status: :active, tags: [:urgent, :important] }
+binary = factory.pack(data)
+result = factory.unpack(binary)
+# => {:status=>:active, :tags=>[:urgent, :important]}
+----
+
+== Custom extension types
+
+=== Type ID ranges
+
+* `-128 to -1` - Reserved for future MessagePack specifications
+* `0` - Convention for symbol extension
+* `1 to 127` - Available for application-specific types
+
+=== Registration patterns
+
+==== Method name (simple)
+
+[source,ruby]
+----
+class MyClass
+  def to_msgpack_ext
+    # Return binary string
+    [value].pack("I")
+  end
+
+  def self.from_msgpack_ext(data)
+    # Parse and return instance
+    new(data.unpack("I").first)
+  end
+end
+
+factory.register_type(0x10, MyClass,
+  packer: :to_msgpack_ext,
+  unpacker: :from_msgpack_ext
+)
+----
+
+==== Proc (flexible)
+
+[source,ruby]
+----
+factory.register_type(0x11, URI,
+  packer: ->(uri) { uri.to_s },
+  unpacker: ->(str) { URI.parse(str) }
+)
+----
+
+==== Recursive (nested structures)
+
+[source,ruby]
+----
+factory.register_type(0x12, TreeNode,
+  packer: ->(obj, packer) {
+    packer.write({ value: obj.value, left: obj.left, right: obj.right })
+  },
+  unpacker: ->(unpacker) {
+    data = unpacker.read
+    TreeNode.new(data[:value], data[:left], data[:right])
+  },
+  recursive: true
+)
+----
+
+== Extension value class
+
+The `Messagepack::ExtensionValue` class represents raw extension types.
+
+=== Accessing extension data
+
+[source,ruby]
+----
+# Register extension that produces ExtensionValue
+factory.register_type(0x20, MyClass, ...)
+
+# When unpacking, access raw extension data
+obj = factory.unpack(binary)
+if obj.is_a?(Messagepack::ExtensionValue)
+  puts "Type: #{obj.type}"
+  puts "Data: #{obj.data.inspect}"
+end
+----
+
+=== Creating extension values
+
+[source,ruby]
+----
+ext = Messagepack::ExtensionValue.new(0x20, "payload")
+binary = factory.pack(ext)
+----
+
+== Type ID registry
+
+This table tracks commonly used type IDs:
+
+[width="40%",options="header"]
+|===
+|Type ID |Type |Status
+|-128 to -1|Reserved|MessagePack specification
+|0|Symbol|Convention
+|1-127|Application|Available
+|===
+
+When creating custom extension types:
+* Check existing registrations for conflicts
+* Document your type IDs
+* Consider using a registry for distributed applications

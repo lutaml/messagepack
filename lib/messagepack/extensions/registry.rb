@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module MessagePack
+module Messagepack
   # Extension registries for packer and unpacker.
   #
   # The packer registry maps Ruby classes to extension type IDs and packing procs.

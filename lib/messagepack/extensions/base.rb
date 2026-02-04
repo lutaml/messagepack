@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module MessagePack
+module Messagepack
   module Extension
     # Base module for extension types.
     #
@@ -10,7 +10,7 @@ module MessagePack
     # To create a custom extension:
     #
     #   class MyType
-    #     include MessagePack::Extension::Base
+    #     include Messagepack::Extension::Base
     #
     #     attr_reader :data
     #
@@ -41,7 +41,7 @@ module MessagePack
         # @param type_id [Integer] The extension type ID (-128 to 127)
         # @param recursive [Boolean] Whether packer/unpacker is passed to proc
         def register_as_extension(type_id, recursive: false)
-          MessagePack::DefaultFactory.register_type(
+          Messagepack::DefaultFactory.register_type(
             type_id,
             self,
             packer: ->(obj) { obj.to_msgpack_ext },

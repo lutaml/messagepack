@@ -2,7 +2,7 @@
 
 require_relative 'packer'
 
-module MessagePack
+module Messagepack
   # Core extensions for to_msgpack method.
   #
   # This module is included in core Ruby classes to provide
@@ -13,9 +13,9 @@ module MessagePack
       if packer_or_io.is_a?(Packer)
         to_msgpack_with_packer(packer_or_io)
       elsif packer_or_io
-        MessagePack.pack(self, packer_or_io)
+        Messagepack.pack(self, packer_or_io)
       else
-        MessagePack.pack(self)
+        Messagepack.pack(self)
       end
     end
 
@@ -30,5 +30,5 @@ end
 
 # Include in core classes
 [NilClass, TrueClass, FalseClass, Integer, Float, String, Array, Hash, Symbol].each do |klass|
-  klass.include(MessagePack::CoreExt) unless klass.include?(MessagePack::CoreExt)
+  klass.include(Messagepack::CoreExt) unless klass.include?(Messagepack::CoreExt)
 end

@@ -1,0 +1,69 @@
+---
+title: Symbol extension
+parent: Core topics
+nav_order: 5
+---
+
+[[symbol-extension]]
+= Symbol extension
+
+== Purpose
+
+The symbol extension (type 0) provides efficient serialization of Ruby symbols.
+
+== References
+
+* link:../references/extensions[Extension types reference] - Symbol extension documentation
+
+== Concepts
+
+=== Registering symbol type
+
+[source,ruby]
+----
+factory.register_type(0, Symbol)
+----
+
+Where,
+
+* `0` is the type ID for symbols
+* The extension uses `to_sym` and `to_s` for packing/unpacking
+
+=== Symbol serialization
+
+[source,ruby]
+----
+factory.register_type(0, Symbol)
+binary = factory.pack(:hello_symbol)
+result = factory.unpack(binary) # => :hello_symbol
+----
+
+Where,
+
+* Symbols are serialized as their string representation
+* Deserialization converts the string back to a symbol
+* This is more efficient than serializing as strings
+
+== Examples
+
+.Symbol serialization in data structures
+====
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+factory.register_type(0, Symbol)
+
+data = {
+  status: :active,
+  priority: :high,
+  tags: [:important, :urgent]
+}
+
+binary = factory.pack(data)
+result = factory.unpack(binary)
+# => {:status=>:active, :priority=>:high, :tags=>[:important, :urgent]}
+----
+====
+
+NOTE: The symbol extension is not registered by default. You must register it
+explicitly if you want to preserve symbols when serializing.

@@ -1,0 +1,42 @@
+# Lychee link checker configuration
+
+# Exclude specific URLs
+exclude = [
+  # Exclude localhost links
+  "http://localhost",
+  "https://localhost",
+
+  # Exclude example domains that may not resolve
+  "http://example.com",
+  "https://example.com",
+
+  # Exclude links that require authentication
+  "https://github.com/lutaml/*",
+]
+
+# Only check http and https links
+schemes = ["http", "https"]
+
+# Maximum number of concurrent requests
+max_concurrency = 8
+
+# Maximum number of redirects to follow
+max_redirects = 10
+
+# Request timeout in seconds
+timeout = 20
+
+# User agent for requests
+user_agent = "lychee/0.14.0"
+
+# Accept 200, 204, 301, 302, 304, 307, 308 status codes
+accept = [200, 204, 301, 302, 304, 307, 308]
+
+# Method to use for requests (GET or HEAD)
+method = "get"
+
+# Verbose output
+verbose = false
+
+# Do not show progress
+no_progress = true

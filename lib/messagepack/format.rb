@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module MessagePack
+module Messagepack
   # MessagePack format specification constants
   #
   # See: https://github.com/msgpack/msgpack/blob/master/spec.md

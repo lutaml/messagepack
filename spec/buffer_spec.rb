@@ -627,7 +627,7 @@ describe Buffer do
     begin
       GC.stress = true
 
-      MessagePack::Buffer.new
+      Messagepack::Buffer.new
     ensure
       GC.stress = stress
     end

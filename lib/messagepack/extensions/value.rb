@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module MessagePack
+module Messagepack
   # ExtensionValue represents a raw MessagePack extension type.
   #
   # This is used when unpacking extension types that don't have a
@@ -27,11 +27,11 @@ module MessagePack
 
     # Convert back to MessagePack format
     def to_msgpack(packer = nil)
-      if packer.is_a?(MessagePack::Packer)
+      if packer.is_a?(Messagepack::Packer)
         packer.write_extension(@type, @payload)
         packer
       else
-        MessagePack::Packer.new.write_extension(@type, @payload).full_pack
+        Messagepack::Packer.new.write_extension(@type, @payload).full_pack
       end
     end
   end

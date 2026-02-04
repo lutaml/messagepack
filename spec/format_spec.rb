@@ -3,7 +3,7 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 
-describe MessagePack do
+describe Messagepack do
   it "nil" do
     check 1, nil
   end
@@ -244,7 +244,7 @@ describe MessagePack do
   def check(len, obj)
     raw = obj.to_msgpack.to_s
     expect(raw.length).to eq(len)
-    expect(MessagePack.unpack(raw)).to eq(obj)
+    expect(Messagepack.unpack(raw)).to eq(obj)
   end
 
   def check_raw(overhead, num)
@@ -265,6 +265,6 @@ describe MessagePack do
   end
 
   def pack_unpack(obj)
-    MessagePack.unpack(obj.to_msgpack)
+    Messagepack.unpack(obj.to_msgpack)
   end
 end

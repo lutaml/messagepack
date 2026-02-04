@@ -1,0 +1,189 @@
+---
+title: Performance optimization
+nav_order: 1
+---
+
+== Purpose
+
+This guide covers techniques for maximizing MessagePack Ruby performance.
+
+== References
+
+* link:../pages/buffer[Buffer management] - Buffer optimization details
+* link:../references/api[API reference] - Low-level API documentation
+
+== Concepts
+
+=== Native type fast-path
+
+Native MessagePack types bypass the extension registry:
+
+* nil, boolean, integer, float, string, symbol, array, hash
+* No O(n) registry search for these types
+* Performance unaffected by number of registered extension types
+
+=== Buffer coalescing
+
+Small writes are automatically merged:
+
+* Writes < 512 bytes are coalesced into larger chunks
+* Reduces memory allocations and GC pressure
+* Significantly faster for patterns with many small writes
+
+=== Factory pools
+
+Reuse packer/unpacker instances:
+
+* Avoid allocation overhead
+* Thread-safe concurrent access
+* Configure pool size for your workload
+
+== Optimization techniques
+
+=== Use native types when possible
+
+[source,ruby]
+----
+# Faster: Native hash
+data = { name: "Alice", age: 30 }
+
+# Slower: Custom class requires registry lookup
+class Person
+  attr_accessor :name, :age
+end
+data = Person.new("Alice", 30)
+----
+
+=== Use factory pools for repeated operations
+
+[source,ruby]
+----
+# Create a pool for repeated use
+pool = factory.pool(10)
+
+# Fast: Reuses packer from pool
+1000.times do |i|
+  pool.pack(id: i, value: "data")
+end
+----
+
+=== Use streaming for large data
+
+[source,ruby]
+----
+# Memory efficient for large files
+buffer = Messagepack::BinaryBuffer.new(File.open("large.msgpack", "rb"))
+unpacker = Messagepack::Unpacker.new(buffer)
+
+while obj = unpacker.read
+  process(obj)  # One object at a time
+end
+----
+
+=== Minimize extension type overhead
+
+[source,ruby]
+----
+# Faster: Use native types in hash
+data = { type: "user", id: 123 }
+
+# Slower: Custom type class requires registry lookup
+data = DataWrapper.new("user", 123)
+----
+
+== Benchmarking
+
+=== Simple benchmark
+
+[source,ruby]
+----
+require 'benchmark'
+
+data = { key: "value" * 100 }
+
+n = 10000
+
+Benchmark.bm do |x|
+  x.report("pack:") do
+    n.times { Messagepack.pack(data) }
+  end
+
+  x.report("unpack:") do
+    binary = Messagepack.pack(data)
+    n.times { Messagepack.unpack(binary) }
+  end
+end
+----
+
+=== Comparing approaches
+
+[source,ruby]
+----
+# Compare factory vs pool
+factory = Messagepack::Factory.new
+pool = factory.pool(5)
+
+Benchmark.bm do |x|
+  x.report("factory:") do
+    1000.times { factory.pack(data) }
+  end
+
+  x.report("pool:") do
+    1000.times { pool.pack(data) }
+  end
+end
+----
+
+== Performance characteristics
+
+Typical performance on modern hardware:
+
+* Packing simple values: 500k-700k ops/sec
+* Packing small arrays: 200k-300k ops/sec
+* Packing small hashes: 150k-200k ops/sec
+* Buffer operations: ~30% faster with coalescing
+
+Your results will vary based on:
+* Data size and complexity
+* Ruby implementation (MRI, JRuby, TruffleRuby)
+* Hardware and OS
+* Number of registered extension types
+
+== Common pitfalls
+
+=== Creating new factories repeatedly
+
+[source,ruby]
+----
+# Bad: Creates new factory each time
+def process(data)
+  factory = Messagepack::Factory.new
+  factory.pack(data)
+end
+
+# Good: Reuse factory
+FACTORY = Messagepack::Factory.new.freeze
+
+def process(data)
+  FACTORY.pack(data)
+end
+----
+
+=== Not using pools in threads
+
+[source,ruby]
+----
+# Bad: Shared unpacker is not thread-safe
+UNPACKER = Messagepack::Unpacker.new
+
+threads.map do
+  Thread.new { UNPACKER.unpack(data) }
+end
+
+# Good: Use pool
+pool = factory.pool(10)
+
+threads.map do
+  Thread.new { pool.unpack(data) }
+end
+----

@@ -2,7 +2,7 @@
 
 require_relative 'extensions/value'
 
-module MessagePack
+module Messagepack
   # Bigint extension type for arbitrary precision integers.
   #
   # This class handles integers that are too large for 64-bit representation.

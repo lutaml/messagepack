@@ -1,0 +1,218 @@
+---
+title: Migration guide
+nav_order: 3
+---
+
+== Purpose
+
+This guide helps you migrate from other MessagePack implementations to the
+pure Ruby MessagePack library.
+
+== References
+
+* link:../pages/serialization[Serialization] - Core API
+* link:../references/api[API reference] - Complete API documentation
+
+== From msgpack-ruby (C extension)
+
+The pure Ruby implementation aims for API compatibility with msgpack-ruby.
+
+=== Module name
+
+[source,ruby]
+----
+# msgpack-ruby
+MessagePack.pack(data)
+
+# messagepack (pure Ruby)
+Messagepack.pack(data)
+----
+
+The pure Ruby version uses `Messagepack` (single word) instead of `MessagePack`.
+
+=== Compatible APIs
+
+Most core APIs are compatible:
+
+[source,ruby]
+----
+# These work the same in both
+Messagepack.pack(data)
+Messagepack.unpack(data)
+Messagepack.load(data)
+Messagepack.dump(data)
+----
+
+=== Extension types
+
+Extension type registration is similar:
+
+[source,ruby]
+----
+# msgpack-ruby
+factory = MessagePack::Factory.new
+factory.register_type(0x01, MyClass, ...)
+
+# messagepack (pure Ruby)
+factory = Messagepack::Factory.new
+factory.register_type(0x01, MyClass, ...)
+----
+
+=== Differences
+
+* **Performance**: C extension is faster for most operations
+* **Dependencies**: Pure Ruby has no C dependencies
+* **Portability**: Pure Ruby works on any Ruby implementation
+
+=== Migration steps
+
+1. Update Gemfile:
+
+[source,ruby]
+----
+# Remove
+gem 'msgpack'
+
+# Add
+gem 'messagepack'
+----
+
+2. Update require statements:
+
+[source,ruby]
+----
+# Change
+require 'msgpack'
+
+# To
+require 'messagepack'
+----
+
+3. Update constant references:
+
+[source,ruby]
+----
+# Change
+MessagePack::Factory
+MessagePack::Unpacker
+
+# To
+Messagepack::Factory
+Messagepack::Unpacker
+----
+
+== From JSON serialization
+
+MessagePack is a binary alternative to JSON.
+
+=== Encoding data
+
+[source,ruby]
+----
+# JSON
+require 'json'
+JSON.generate({name: "Alice"})
+
+# MessagePack
+require 'messagepack'
+Messagepack.pack({name: "Alice"})
+----
+
+=== Decoding data
+
+[source,ruby]
+----
+# JSON
+JSON.parse('{"name":"Alice"}')
+
+# MessagePack
+Messagepack.unpack(binary_string)
+----
+
+=== Type differences
+
+[source,ruby]
+----
+# JSON only supports these types
+null, true, false, number, string, array, object
+
+# MessagePack supports additional types
+nil, boolean, integer, float, string, binary, array, map,
+timestamp, extension types
+----
+
+=== Migration pattern
+
+[source,ruby]
+----
+# Before (JSON)
+class Cache
+  def save(key, value)
+    File.write("cache/#{key}", JSON.generate(value))
+  end
+
+  def load(key)
+    JSON.parse(File.read("cache/#{key}"))
+  end
+end
+
+# After (MessagePack)
+class Cache
+  def save(key, value)
+    File.write("cache/#{key}", Messagepack.pack(value), mode: 'wb')
+  end
+
+  def load(key)
+    Messagepack.unpack(File.read("cache/#{key}", encoding: Encoding::BINARY))
+  end
+end
+----
+
+== Compatibility mode
+
+For compatibility with older MessagePack implementations:
+
+[source,ruby]
+----
+# Use compatibility mode to avoid bin/str8 types
+binary = Messagepack.pack(data, compatibility_mode: true)
+----
+
+This ensures:
+* Binary data uses str16/str32 instead of bin8/bin16/bin32
+* Strings use str16/str32 instead of str8
+
+== Testing your migration
+
+=== Verify serialization
+
+[source,ruby]
+----
+# Test that data round-trips correctly
+def test_serialization(data)
+  binary = Messagepack.pack(data)
+  result = Messagepack.unpack(binary)
+  result == data
+end
+
+# Test various types
+test_serialization(nil)
+test_serialization(true)
+test_serialization(42)
+test_serialization(3.14)
+test_serialization("hello")
+test_serialization([1, 2, 3])
+test_serialization({a: 1, b: 2})
+----
+
+=== Compare with old implementation
+
+[source,ruby]
+----
+# Verify compatibility by comparing outputs
+old_binary = OldImpl.pack(data)
+new_binary = Messagepack.pack(data)
+
+# Results should be identical for standard types
+# (extension types may differ)
+----

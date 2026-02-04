@@ -2,7 +2,7 @@
 
 require_relative 'value'
 
-module MessagePack
+module Messagepack
   # Timestamp extension type (type -1).
   #
   # Represents a high-resolution timestamp with second and nanosecond precision.

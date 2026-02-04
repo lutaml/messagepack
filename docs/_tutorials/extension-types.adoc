@@ -1,0 +1,170 @@
+---
+title: Custom extension types
+nav_order: 2
+---
+
+== Purpose
+
+This tutorial shows how to create custom extension types for serializing objects
+that don't have native MessagePack support.
+
+== References
+
+* link:../pages/extension-types[Extension types] - Extension type concepts
+* link:../references/extensions[Extension types reference] - Detailed documentation
+
+== Prerequisites
+
+* Completed link:../tutorials/getting-started[Getting started] tutorial
+
+== Understanding extension types
+
+MessagePack defines a set of built-in types (nil, boolean, integer, float, string,
+array, map). For custom Ruby classes, you need to register an extension type.
+
+An extension type requires:
+
+* A type ID (-128 to 127)
+* A packing method that converts your object to binary
+* An unpacking method that reconstructs your object from binary
+
+== Simple example: Point class
+
+=== Define the class
+
+[source,ruby]
+----
+class Point
+  attr_reader :x, :y
+
+  def initialize(x, y)
+    @x = x
+    @y = y
+  end
+
+  def to_msgpack_ext
+    # Pack as two 32-bit integers
+    [@x, @y].pack("ll")
+  end
+
+  def self.from_msgpack_ext(data)
+    x, y = data.unpack("ll")
+    new(x, y)
+  end
+
+  def to_s
+    "(#{@x}, #{@y})"
+  end
+end
+----
+
+=== Register with factory
+
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+factory.register_type(0x01, Point,
+  packer: :to_msgpack_ext,
+  unpacker: :from_msgpack_ext
+)
+----
+
+=== Use it
+
+[source,ruby]
+----
+point = Point.new(10, 20)
+binary = factory.pack(point)
+result = factory.unpack(binary)
+puts result  # => "(10, 20)"
+----
+
+== Complex example: Nested objects
+
+=== Define a container class
+
+[source,ruby]
+----
+class TreeNode
+  attr_reader :value, :left, :right
+
+  def initialize(value, left = nil, right = nil)
+    @value = value
+    @left = left
+    @right = right
+  end
+
+  def to_msgpack_ext(packer)
+    # Serialize as hash with recursive packing
+    packer.write({
+      value: @value,
+      left: @left,
+      right: @right
+    })
+  end
+
+  def self.from_msgpack_ext(unpacker)
+    # Recursively deserialize
+    data = unpacker.read
+    new(
+      data[:value],
+      data[:left],
+      data[:right]
+    )
+  end
+end
+----
+
+=== Register as recursive
+
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+factory.register_type(0x02, TreeNode,
+  packer: ->(obj, packer) { obj.to_msgpack_ext(packer) },
+  unpacker: ->(unpacker) { TreeNode.from_msgpack_ext(unpacker) },
+  recursive: true
+)
+----
+
+=== Use it
+
+[source,ruby]
+----
+tree = TreeNode.new(
+  1,
+  TreeNode.new(2),
+  TreeNode.new(3, TreeNode.new(4))
+)
+
+binary = factory.pack(tree)
+result = factory.unpack(binary)
+puts result.value  # => 1
+puts result.left.value  # => 2
+puts result.right.left.value  # => 4
+----
+
+== Using procs for simple types
+
+For simple classes, you can use procs directly:
+
+[source,ruby]
+----
+require 'uri'
+
+factory = Messagepack::Factory.new
+factory.register_type(0x10, URI,
+  packer: ->(uri) { uri.to_s },
+  unpacker: ->(str) { URI.parse(str) }
+)
+
+uri = URI.parse("https://example.com")
+binary = factory.pack(uri)
+result = factory.unpack(binary)
+# => #<URI::HTTPS https://example.com>
+----
+
+== Next steps
+
+* link:../tutorials/thread-safety[Thread-safe usage] - Use factories in multi-threaded applications
+* link:../guides/io-streaming[IO streaming] - Work with streams and networks

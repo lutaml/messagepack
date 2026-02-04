@@ -1,0 +1,88 @@
+---
+title: Timestamp extension
+parent: Core topics
+nav_order: 4
+---
+
+[[timestamp-extension]]
+= Timestamp extension
+
+== Purpose
+
+The timestamp extension (type -1) provides nanosecond precision time handling
+for Time objects.
+
+== References
+
+* link:../references/extensions[Extension types reference] - Timestamp specification
+* link:../references/format[Format specification] - MessagePack timestamp format
+
+== Concepts
+
+=== Timestamp formats
+
+.MessagePack automatically selects the appropriate format
+====
+[source]
+----
+Timestamp32  - 4 bytes (seconds only, 32-bit)
+              Used when: nanoseconds == 0 and
+                         seconds fit in 32 bits
+
+Timestamp64  - 8 bytes (seconds + nanoseconds)
+              Used when: nanoseconds != 0 and
+                         timestamp fits in 64 bits
+
+Timestamp96 - 12 bytes (seconds + nanoseconds, 96-bit)
+              Used when: timestamp requires 96 bits
+----
+====
+
+=== Using timestamp with Time
+
+[source,ruby]
+----
+factory.register_type(-1, Time,
+  packer: Messagepack::Time::Packer,
+  unpacker: Messagepack::Time::Unpacker
+)
+----
+
+Where,
+
+* `-1` is the reserved type ID for timestamps
+* `Messagepack::Time::Packer` handles serialization with nanosecond precision
+* `Messagepack::Time::Unpacker` handles deserialization
+
+== Examples
+
+.Timestamp serialization examples
+====
+[source,ruby]
+----
+factory = Messagepack::Factory.new
+factory.register_type(-1, Time,
+  packer: Messagepack::Time::Packer,
+  unpacker: Messagepack::Time::Unpacker
+)
+
+# Current time with nanosecond precision
+now = Time.now
+binary = factory.pack(now)
+restored = factory.unpack(binary)
+puts restored.tv_nsec # Nanoseconds preserved
+
+# Historical date
+time = Time.utc(2020, 1, 1, 12, 30, 45)
+binary = factory.pack(time)
+puts binary.size # => 6 (fixext4 format)
+
+# Future date with nanoseconds
+future = Time.utc(2100, 6, 15, 0, 0, 0, 123456789)
+binary = factory.pack(future)
+puts binary.size # => 15 (ext8 with timestamp96)
+----
+====
+
+NOTE: The default factory automatically includes the timestamp extension for Time
+objects. You don't need to register it unless you create a custom factory.

@@ -10,7 +10,7 @@ def asciienc(str)
   str.encode('ASCII-8BIT')
 end
 
-describe MessagePack do
+describe Messagepack do
   tests = {
     'constant values' => [
       ['true', true, "\xC3"],
@@ -65,11 +65,11 @@ describe MessagePack do
     context("with #{ctx}") do
       its.each do |desc, unpacked, packed|
         it("encodes #{desc}") do
-          MessagePack.pack(unpacked).should == packed
+          Messagepack.pack(unpacked).should == packed
         end
 
         it "decodes #{desc}" do
-          MessagePack.unpack(packed).should == unpacked
+          Messagepack.unpack(packed).should == unpacked
         end
       end
     end
@@ -77,17 +77,17 @@ describe MessagePack do
 
   context 'using other names for .pack and .unpack' do
     it 'can unpack with .load' do
-      MessagePack.load("\xABhello world").should == 'hello world'
+      Messagepack.load("\xABhello world").should == 'hello world'
     end
 
     it 'can pack with .dump' do
-      MessagePack.dump(utf8enc('hello world')).should == "\xABhello world"
+      Messagepack.dump(utf8enc('hello world')).should == "\xABhello world"
     end
   end
 
   context 'with symbols' do
     it 'encodes symbols as strings' do
-      MessagePack.pack(:symbol).should == "\xA6symbol"
+      Messagepack.pack(:symbol).should == "\xA6symbol"
     end
   end
 
@@ -106,55 +106,55 @@ describe MessagePack do
 
     it 'transcodes strings when encoding' do
       input = "sk\xE5l".force_encoding(Encoding::ISO_8859_1)
-      MessagePack.pack(input).should == "\xA5sk\xC3\xA5l"
+      Messagepack.pack(input).should == "\xA5sk\xC3\xA5l"
     end
   end
 
   context 'with other things' do
     it 'raises an error on #pack with an unsupported type' do
-      expect { MessagePack.pack(self) }.to raise_error(NoMethodError, /undefined method .*to_msgpack/)
+      expect { Messagepack.pack(self) }.to raise_error(NoMethodError, /undefined method .*to_msgpack/)
     end
 
     it 'raises an error on #unpack with garbage' do
-      expect { MessagePack.unpack('asdka;sd') }.to raise_error(MessagePack::UnpackError)
+      expect { Messagepack.unpack('asdka;sd') }.to raise_error(Messagepack::UnpackError)
     end
   end
 
   context 'extensions' do
     it 'can unpack hashes with symbolized keys' do
-      packed = MessagePack.pack({'hello' => 'world', 'nested' => ['object', {'structure' => true}]})
-      unpacked = MessagePack.unpack(packed, :symbolize_keys => true)
+      packed = Messagepack.pack({'hello' => 'world', 'nested' => ['object', {'structure' => true}]})
+      unpacked = Messagepack.unpack(packed, :symbolize_keys => true)
       unpacked.should == {:hello => 'world', :nested => ['object', {:structure => true}]}
     end
 
     it 'does not symbolize keys even if other options are present' do
-      packed = MessagePack.pack({'hello' => 'world', 'nested' => ['object', {'structure' => true}]})
-      unpacked = MessagePack.unpack(packed, :other_option => false)
+      packed = Messagepack.pack({'hello' => 'world', 'nested' => ['object', {'structure' => true}]})
+      unpacked = Messagepack.unpack(packed, :other_option => false)
       unpacked.should == {'hello' => 'world', 'nested' => ['object', {'structure' => true}]}
     end
 
     it 'can unpack strings with a specified encoding', :encodings do
-      packed = MessagePack.pack({utf8enc('hello') => utf8enc('world')})
-      unpacked = MessagePack.unpack(packed)
+      packed = Messagepack.pack({utf8enc('hello') => utf8enc('world')})
+      unpacked = Messagepack.unpack(packed)
       unpacked['hello'].encoding.should == Encoding::UTF_8
     end
 
     it 'can pack strings with a specified encoding', :encodings do
-      packed = MessagePack.pack({'hello' => "w\xE5rld".force_encoding(Encoding::ISO_8859_1)})
+      packed = Messagepack.pack({'hello' => "w\xE5rld".force_encoding(Encoding::ISO_8859_1)})
       packed.index("w\xC3\xA5rld").should_not be_nil
     end
   end
 
   context 'in compatibility mode' do
     it 'does not use the bin types' do
-      packed = MessagePack.pack('hello'.force_encoding(Encoding::BINARY), compatibility_mode: true)
+      packed = Messagepack.pack('hello'.force_encoding(Encoding::BINARY), compatibility_mode: true)
       packed.should eq("\xA5hello")
-      packed = MessagePack.pack(('hello' * 100).force_encoding(Encoding::BINARY), compatibility_mode: true)
+      packed = Messagepack.pack(('hello' * 100).force_encoding(Encoding::BINARY), compatibility_mode: true)
       packed.should start_with("\xDA\x01\xF4")
     end
 
     it 'does not use the str8 type' do
-      packed = MessagePack.pack('x' * 32, compatibility_mode: true)
+      packed = Messagepack.pack('x' * 32, compatibility_mode: true)
       packed.should start_with("\xDA\x00\x20")
     end
   end
@@ -163,7 +163,7 @@ describe MessagePack do
     tests['numbers'].take(10).each do |desc, unpacked, packed|
       it("encodes #{desc} to the smallest representation") do
         bignum = (1 << 64).coerce(unpacked)[0]
-        MessagePack.pack(bignum).should eq(packed)
+        Messagepack.pack(bignum).should eq(packed)
       end
     end
   end
@@ -172,9 +172,9 @@ describe MessagePack do
     require 'tempfile'
     require 'stringio'
 
-    it 'work with IO destination object as 2nd argument of MessagePack.pack' do
+    it 'work with IO destination object as 2nd argument of Messagepack.pack' do
       Tempfile.create("pack-test") do |io|
-        return_value = MessagePack.pack(utf8enc('hello world'), io)
+        return_value = Messagepack.pack(utf8enc('hello world'), io)
         return_value.should be_nil
 
         io.rewind
@@ -182,31 +182,31 @@ describe MessagePack do
       end
     end
 
-    it 'work with IO-like StringIO destination object as 2nd argument of MessagePack.pack' do
+    it 'work with IO-like StringIO destination object as 2nd argument of Messagepack.pack' do
       io = StringIO.new
-      return_value = MessagePack.pack(utf8enc('hello world'), io)
+      return_value = Messagepack.pack(utf8enc('hello world'), io)
       return_value.should be_nil
 
       io.rewind
       io.read.force_encoding(Encoding::ASCII_8BIT).should eq("\xABhello world".force_encoding(Encoding::ASCII_8BIT))
     end
 
-    it 'work with IO source object as source of MessagePack.unpack' do
+    it 'work with IO source object as source of Messagepack.unpack' do
       Tempfile.create("unpack-test") do |io|
-        MessagePack.pack(utf8enc('hello world'), io)
+        Messagepack.pack(utf8enc('hello world'), io)
         io.rewind
 
-        return_value = MessagePack.unpack(io)
+        return_value = Messagepack.unpack(io)
         return_value.should eq(utf8enc('hello world'))
       end
     end
 
-    it 'work with IO-like StringIO object of MessagePack.unpack' do
+    it 'work with IO-like StringIO object of Messagepack.unpack' do
       io = StringIO.new
-      MessagePack.pack(utf8enc('hello world'), io)
+      Messagepack.pack(utf8enc('hello world'), io)
       io.rewind
 
-      return_value = MessagePack.unpack(io)
+      return_value = Messagepack.unpack(io)
       return_value.should eq(utf8enc('hello world'))
     end
   end

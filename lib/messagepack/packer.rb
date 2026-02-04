@@ -3,11 +3,11 @@
 require_relative 'buffer'
 require_relative 'format'
 
-module MessagePack
+module Messagepack
   # Packer serializes Ruby objects into MessagePack binary format.
   #
   # Usage:
-  #   packer = MessagePack::Packer.new
+  #   packer = Messagepack::Packer.new
   #   packer.write("hello")
   #   packer.write([1, 2, 3])
   #   data = packer.full_pack
@@ -23,6 +23,31 @@ module MessagePack
     def compatibility_mode?
       @compatibility_mode
     end
+
+    class << self
+      # Private factory method for creating a packer with specific internal state
+      # Used for recursive extension serialization to avoid fragile metaprogramming
+      #
+      # @param buffer [BinaryBuffer] The buffer to use
+      # @param ext_registry [ExtensionRegistry::Packer] The extension registry to use
+      # @return [Packer] A new packer with the specified buffer and registry
+      #
+      def create_for_recursion(buffer, ext_registry)
+        packer = allocate
+        packer.instance_variable_set(:@buffer, buffer)
+        packer.instance_variable_set(:@compatibility_mode, false)
+        packer.instance_variable_set(:@ext_registry, ext_registry)
+        packer.instance_variable_set(:@to_msgpack_method, :to_msgpack)
+        packer.instance_variable_set(:@to_msgpack_arg, packer)
+        packer.instance_variable_set(:@frozen, false)
+        packer
+      end
+    end
+
+    # int64 bounds for oversized integer extension checking
+    INT64_MIN = -2**63
+    INT64_MAX = 2**63 - 1
+    private_constant :INT64_MIN, :INT64_MAX
 
     def initialize(io = nil, options = nil)
       # Handle various initialization patterns:
@@ -52,55 +77,74 @@ module MessagePack
       @frozen = false  # Custom frozen flag for pool
     end
 
+    # Set the extension registry for this packer.
+    # Used internally by Factory to inject custom type registrations.
+    #
+    # @param registry [ExtensionRegistry::Packer] The extension registry to use
+    #
+    def extension_registry=(registry)
+      @ext_registry = registry
+    end
+
+    # Mark this packer as frozen for pool use.
+    # Prevents type registration when used from a pool.
+    #
+    def freeze_for_pool
+      @frozen = true
+    end
+
     # Main API: Write any Ruby object
     def write(value)
-      # First check if this type is registered as an extension
-      data = @ext_registry.lookup(value)
-      if data
-        type_id, packer_proc, flags = data
-        # Convert Symbol to Proc if needed
-        proc = packer_proc.is_a?(Symbol) ? ->(obj) { obj.send(packer_proc) } : packer_proc
+      # Fast-path: Skip registry lookup for native types UNLESS they have custom registration
+      # Native types with custom extensions should still use the registry
+      check_registry = !native_type?(value) || @ext_registry.type_registered?(value.class)
 
-        # Handle oversized_integer_extension for Integer
-        if value.is_a?(Integer) && flags & 0x02 != 0
-          # Check if integer fits in int64 range
-          int64_min = -2**63
-          int64_max = 2**63 - 1
-          if value >= int64_min && value <= int64_max
-            # Fits in native int64 format, use native serialization
-            # Fall through to standard serialization below
-            data = nil
-          else
-            # Too large, use the extension packer
-            payload = proc.call(value)
-            write_extension_direct(type_id, payload)
+      if check_registry
+        # First check if this type is registered as an extension
+        data = @ext_registry.lookup(value)
+        if data
+          type_id, packer_proc, flags = data
+          # Convert Symbol to Proc if needed
+          proc = packer_proc.is_a?(Symbol) ? ->(obj) { obj.send(packer_proc) } : packer_proc
+
+          # Handle oversized_integer_extension for Integer
+          if value.is_a?(Integer)
+            if flags & 0x02 != 0
+              # oversized_integer_extension flag is set
+              if value >= INT64_MIN && value <= INT64_MAX
+                # Fits in native int64 format, use native serialization
+                # Fall through to standard serialization below
+                data = nil
+              else
+                # Too large, use the extension packer
+                payload = proc.call(value)
+                write_extension_direct(type_id, payload)
+                return self
+              end
+            else
+              # Integer is registered but oversized_integer_extension flag is NOT set
+              # Ignore the extension and use standard serialization
+              # This allows big integers to raise RangeError as expected
+              data = nil
+            end
+          end
+
+          if data
+            # For recursive packers, pass self as second argument
+            if flags & 0x01 != 0
+              # Recursive packer - create a temporary buffer to capture the output
+              temp_buffer = BinaryBuffer.new
+              temp_packer = self.class.create_for_recursion(temp_buffer, @ext_registry)
+              proc.call(value, temp_packer)
+              payload = temp_buffer.to_s
+              write_extension_direct(type_id, payload)
+            else
+              # Non-recursive - get the payload and write it as extension
+              payload = proc.call(value)
+              write_extension_direct(type_id, payload)
+            end
             return self
           end
-        elsif value.is_a?(Integer)
-          # Integer type registered without oversized_integer_extension flag
-          # Don't use the extension packer - fall through to native format
-          # (which will raise RangeError for values that don't fit)
-          data = nil
-        end
-
-        if data
-          # For recursive packers, pass self as second argument
-          if flags & 0x01 != 0
-            # Recursive packer - create a temporary buffer to capture the output
-            temp_buffer = BinaryBuffer.new
-            temp_packer = Packer.new(io: nil).tap do |pk|
-              pk.instance_variable_set(:@buffer, temp_buffer)
-              pk.instance_variable_set(:@ext_registry, @ext_registry)
-            end
-            proc.call(value, temp_packer)
-            payload = temp_buffer.to_s
-            write_extension_direct(type_id, payload)
-          else
-            # Non-recursive - get the payload and write it as extension
-            payload = proc.call(value)
-            write_extension_direct(type_id, payload)
-          end
-          return self
         end
       end
 
@@ -280,7 +324,7 @@ module MessagePack
       # register_type(type_id, klass, proc)
       # register_type(type_id, klass, &:method)
 
-      raise FrozenError, "can't modify frozen MessagePack::Packer" if @frozen
+      raise FrozenError, "can't modify frozen Messagepack::Packer" if @frozen
 
       if block_given?
         packer_proc = block
@@ -302,6 +346,18 @@ module MessagePack
     end
 
     private
+
+    # Check if a value is a native MessagePack type that doesn't need registry lookup
+    # Native types are: nil, true, false, Integer, Float, String, Symbol, Array, Hash
+    # Time is handled separately (it's registered as an extension)
+    def native_type?(value)
+      case value
+      when NilClass, TrueClass, FalseClass, Integer, Float, String, Symbol, Array, Hash
+        true
+      else
+        false
+      end
+    end
 
     # Internal type dispatch
 

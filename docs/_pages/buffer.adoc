@@ -1,0 +1,85 @@
+---
+title: Buffer
+parent: Core topics
+nav_order: 6
+---
+
+[[buffer]]
+= Buffer management
+
+== Purpose
+
+The `BinaryBuffer` class provides efficient chunked storage for binary data.
+
+== References
+
+* link:../references/api[API reference] - BinaryBuffer class documentation
+* link:../guides/performance[Performance guide] - Buffer optimization techniques
+
+== Concepts
+
+=== Buffer operations
+
+[source,ruby]
+----
+buffer = Messagepack::BinaryBuffer.new
+buffer << "data"
+buffer.read(4)             # => "data"
+buffer.to_s                # => ""
+----
+
+Where,
+
+* `BinaryBuffer.new` creates a new buffer
+* `<<` appends data to the buffer
+* `read(n)` reads and consumes n bytes
+* `to_s` returns remaining data without consuming
+
+=== Skip operations
+
+[source,ruby]
+----
+buffer = Messagepack::BinaryBuffer.new
+buffer << "\x81\xA3foo\xA5world"
+buffer.skip              # Skip one object (format byte)
+buffer.skip_nil          # Skip nil value if present
+----
+
+Where,
+
+* `skip` skips a complete MessagePack object
+* `skip_nil` efficiently skips nil values
+
+=== Buffer with IO
+
+[source,ruby]
+----
+File.open("data.msgpack", "rb") do |io|
+  buffer = Messagepack::BinaryBuffer.new(io)
+  unpacker = Messagepack::Unpacker.new(buffer)
+  obj = unpacker.read
+end
+----
+
+Where,
+
+* The buffer reads from the IO when needed
+* Data is automatically managed in chunks
+* Suitable for large files that don't fit in memory
+
+== Examples
+
+.Reading large MessagePack files efficiently
+====
+[source,ruby]
+----
+# Process a large file without loading everything into memory
+buffer = Messagepack::BinaryBuffer.new(File.open("large.msgpack", "rb"))
+unpacker = Messagepack::Unpacker.new(buffer)
+
+while obj = unpacker.read
+  # Process each object one at a time
+  process(obj)
+end
+----
+====

@@ -1,0 +1,97 @@
+---
+title: Streaming
+parent: Core topics
+nav_order: 7
+---
+
+[[streaming]]
+= Streaming unpacking
+
+== Purpose
+
+The streaming unpacker allows incremental parsing of MessagePack data as it
+becomes available.
+
+== References
+
+* link:../guides/io-streaming[IO streaming guide] - Working with streams
+* link:../references/api[API reference] - Unpacker class documentation
+
+== Concepts
+
+=== Feeding data incrementally
+
+[source,ruby]
+----
+unpacker = Messagepack::Unpacker.new
+unpacker.feed("\x81")       # Feed partial data
+unpacker.feed("\xA3")       # Feed more
+unpacker.feed("foo")        # Feed final part
+obj = unpacker.read         # => {"foo"=>nil}
+----
+
+Where,
+
+* `Unpacker.new` creates a new unpacker instance
+* `feed(data)` appends data to the buffer
+* `read` returns one complete object or `nil` if more data is needed
+
+=== Streaming from IO
+
+[source,ruby]
+----
+unpacker = Messagepack::Unpacker.new(io)
+obj = unpacker.read         # Reads from IO as needed
+----
+
+Where,
+
+* `Unpacker.new(io)` creates an unpacker attached to an IO
+* The unpacker automatically reads from the IO when needed
+* Use `full_unpack` to read a single object and reset
+
+=== Iterating over multiple objects
+
+[source,ruby]
+----
+unpacker = Messagepack::Unpacker.new
+unpacker.feed(data1)
+unpacker.feed(data2)
+unpacker.feed_each { |obj| process(obj) }
+----
+
+Where,
+
+* `feed_each` yields each complete object as it's parsed
+* Useful for processing multiple objects from a stream
+
+== Examples
+
+.Streaming unpacking from network
+====
+[source,ruby]
+----
+require 'socket'
+
+# Simulate receiving data in chunks
+unpacker = Messagepack::Unpacker.new
+
+chunks = ["\x81\xA3", "foo", "\xA5", "world"]
+
+chunks.each do |chunk|
+  unpacker.feed(chunk)
+  obj = unpacker.read
+  if obj
+    puts "Received: #{obj.inspect}"
+  else
+    puts "Waiting for more data..."
+  end
+end
+
+# Output:
+# Waiting for more data...
+# Waiting for more data...
+# Waiting for more data...
+# Received: {"foo"=>"world"}
+----
+====

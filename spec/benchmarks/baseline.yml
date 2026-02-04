@@ -1,0 +1,139 @@
+# Baseline performance measurements for MessagePack pure Ruby implementation
+#
+# This file stores baseline iterations-per-second (IPS) measurements for various
+# MessagePack operations. These values are used by the regression suite to detect
+# performance regressions.
+#
+# To update baselines after optimizations:
+# 1. Run the regression suite with --generate-baseline
+# 2. Commit the updated baseline.yml
+#
+# Values are in iterations per second (higher is better)
+#
+# Updated: 2025-01-04 (after buffer coalescing, registry fast-path, and code quality optimizations)
+
+# Primitive type packing/unpacking
+primitives:
+  pack_nil: 657832
+  pack_true: 649249
+  pack_false: 635615
+  pack_fixnum: 592389
+  pack_uint8: 530083
+  pack_uint16: 512071
+  pack_uint32: 507901
+  pack_uint64: 495859
+  pack_int8: 527609
+  pack_int16: 516081
+  pack_int32: 510496
+  pack_int64: 504889
+  pack_float64: 536613
+  pack_float32: 520000
+  pack_fixstr: 475390
+  pack_str8: 400000
+  pack_str16: 350000
+  pack_str32: 100000
+  pack_binary: 300000
+  pack_symbol: 466063
+  unpack_nil: 195211
+  unpack_true: 199140
+  unpack_false: 200483
+  unpack_fixnum: 180000
+  unpack_string: 150000
+
+# Container type packing/unpacking
+containers:
+  pack_empty_array: 800000
+  pack_small_array: 292250
+  pack_medium_array: 100000
+  pack_large_array: 5000
+  pack_empty_hash: 700000
+  pack_small_hash: 201640
+  pack_medium_hash: 50000
+  pack_large_hash: 3000
+  pack_nested_array: 100000
+  pack_nested_hash: 50000
+  pack_mixed_nested: 20000
+  unpack_small_array: 250000
+  unpack_small_hash: 150000
+
+# Buffer operations (after chunk coalescing optimization)
+buffer:
+  # Before optimization: 3,692 i/s
+  # After optimization: 4,726 i/s (+28%)
+  write_byte_1000: 4726
+
+  # Single large write: 980,487 i/s
+  write_bytes_small: 980487
+  write_bytes_medium: 173440
+  write_bytes_large: 24543
+
+  # Mixed operations: 526,949 i/s
+  mixed_operations: 526949
+
+  # Read operations
+  read_all_small: 1165286
+  read_all_medium: 1148916
+  read_all_large: 547589
+  read_byte_chunked: 66175
+
+  clear_buffer: 50000
+  reset_buffer: 50000
+
+# Extension registry operations (after fast-path optimization)
+registry:
+  # Native types - no longer affected by registry size
+  pack_native_string: 494901
+  pack_native_array: 292250
+  pack_native_hash: 201640
+  pack_native_integer: 585901
+  pack_native_float: 526768
+  pack_native_symbol: 464829
+  pack_native_nil: 663269
+  pack_native_bool: 651302
+
+  # Custom types still affected by registry size (as expected)
+  pack_with_0_registered: 469124
+  pack_with_10_registered: 272402
+  pack_with_100_registered: 46857
+  pack_registered_type: 235616
+
+  # Ancestor search performance
+  ancestor_cache_miss: 120002
+
+# Extension type operations
+extensions:
+  pack_timestamp_32: 150000
+  pack_timestamp_64: 120000
+  pack_timestamp_96: 100000
+  unpack_timestamp: 120000
+  pack_symbol_extension: 200000
+  pack_custom_extension: 100000
+  pack_recursive_extension: 50000
+  pack_recursive_deep: 20000
+
+# Streaming operations
+streaming:
+  pack_single_write: 200000
+  pack_100_small_writes: 50000
+  pack_to_stringio: 100000
+  unpack_single_feed: 100000
+  unpack_10_feeds: 80000
+  unpack_100_feeds: 50000
+  unpack_all_at_once: 80000
+  stream_unpack_100: 30000
+
+# Real-world scenarios
+realworld:
+  pack_api_response: 100000
+  pack_api_paginated: 5000
+  pack_api_error: 80000
+  pack_log_simple: 80000
+  pack_log_detailed: 50000
+  pack_log_batch: 10000
+  pack_config: 50000
+  pack_preferences: 70000
+  pack_1000_products: 2000
+  pack_1000_metrics: 3000
+  pack_social_data: 1000
+  msgpack_vs_json_pack: 100000
+  msgpack_vs_json_unpack: 80000

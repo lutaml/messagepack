@@ -3,23 +3,23 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 
-RSpec.describe MessagePack::Timestamp do
+RSpec.describe Messagepack::Timestamp do
   describe 'malformed format' do
     it do
       expect do
-        MessagePack::Timestamp.from_msgpack_ext([0xd4, 0x00].pack("C*"))
-      end.to raise_error(MessagePack::MalformedFormatError)
+        Messagepack::Timestamp.from_msgpack_ext([0xd4, 0x00].pack("C*"))
+      end.to raise_error(Messagepack::MalformedFormatError)
     end
   end
 
   describe 'register_type with Time' do
     let(:factory) do
-      factory = MessagePack::Factory.new
+      factory = Messagepack::Factory.new
       factory.register_type(
-        MessagePack::Timestamp::TYPE,
+        Messagepack::Timestamp::TYPE,
         Time,
-        packer: MessagePack::Time::Packer,
-        unpacker: MessagePack::Time::Unpacker
+        packer: Messagepack::Time::Packer,
+        unpacker: Messagepack::Time::Unpacker
       )
       factory
     end
@@ -99,15 +99,15 @@ RSpec.describe MessagePack::Timestamp do
     end
   end
 
-  describe 'register_type with MessagePack::Timestamp' do
+  describe 'register_type with Messagepack::Timestamp' do
     let(:factory) do
-      factory = MessagePack::Factory.new
-      factory.register_type(MessagePack::Timestamp::TYPE, MessagePack::Timestamp)
+      factory = Messagepack::Factory.new
+      factory.register_type(Messagepack::Timestamp::TYPE, Messagepack::Timestamp)
       factory
     end
 
-    let(:timestamp) { MessagePack::Timestamp.new(Time.now.tv_sec, 123_456_789) }
-    it 'serializes and deserializes MessagePack::Timestamp' do
+    let(:timestamp) { Messagepack::Timestamp.new(Time.now.tv_sec, 123_456_789) }
+    it 'serializes and deserializes Messagepack::Timestamp' do
       packed = factory.pack(timestamp)
       unpacked = factory.unpack(packed)
       expect(unpacked).to eq(timestamp)
@@ -116,10 +116,10 @@ RSpec.describe MessagePack::Timestamp do
 
   describe 'timestamp32' do
     it 'handles [1, 0]' do
-      t = MessagePack::Timestamp.new(1, 0)
+      t = Messagepack::Timestamp.new(1, 0)
 
       payload = t.to_msgpack_ext
-      unpacked = MessagePack::Timestamp.from_msgpack_ext(payload)
+      unpacked = Messagepack::Timestamp.from_msgpack_ext(payload)
 
       expect(unpacked).to eq(t)
     end
@@ -127,10 +127,10 @@ RSpec.describe MessagePack::Timestamp do
 
   describe 'timestamp64' do
     it 'handles [1, 1]' do
-      t = MessagePack::Timestamp.new(1, 1)
+      t = Messagepack::Timestamp.new(1, 1)
 
       payload = t.to_msgpack_ext
-      unpacked = MessagePack::Timestamp.from_msgpack_ext(payload)
+      unpacked = Messagepack::Timestamp.from_msgpack_ext(payload)
 
       expect(unpacked).to eq(t)
     end
@@ -138,19 +138,19 @@ RSpec.describe MessagePack::Timestamp do
 
   describe 'timestamp96' do
     it 'handles [-1, 0]' do
-      t = MessagePack::Timestamp.new(-1, 0)
+      t = Messagepack::Timestamp.new(-1, 0)
 
       payload = t.to_msgpack_ext
-      unpacked = MessagePack::Timestamp.from_msgpack_ext(payload)
+      unpacked = Messagepack::Timestamp.from_msgpack_ext(payload)
 
       expect(unpacked).to eq(t)
     end
 
     it 'handles [-1, 999_999_999]' do
-      t = MessagePack::Timestamp.new(-1, 999_999_999)
+      t = Messagepack::Timestamp.new(-1, 999_999_999)
 
       payload = t.to_msgpack_ext
-      unpacked = MessagePack::Timestamp.from_msgpack_ext(payload)
+      unpacked = Messagepack::Timestamp.from_msgpack_ext(payload)
 
       expect(unpacked).to eq(t)
     end

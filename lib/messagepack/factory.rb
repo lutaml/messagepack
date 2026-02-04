@@ -4,11 +4,11 @@ require_relative 'packer'
 require_relative 'unpacker'
 require_relative 'extensions/registry'
 
-module MessagePack
+module Messagepack
   # Factory for creating packer/unpacker instances with custom type registration.
   #
   # Usage:
-  #   factory = MessagePack::Factory.new
+  #   factory = Messagepack::Factory.new
   #   factory.register_type(0x01, MyClass, packer: :to_msgpack, unpacker: :from_msgpack)
   #   packer = factory.packer
   #   unpacker = factory.unpacker
@@ -47,7 +47,7 @@ module MessagePack
     # @option options [Boolean] :recursive Whether packer/unpacker is passed to proc
     #
     def register_type(type_id, klass, options = {})
-      raise FrozenError, "can't modify frozen MessagePack::Factory" if frozen?
+      raise FrozenError, "can't modify frozen Messagepack::Factory" if frozen?
 
       packer = normalize_packer(options[:packer], klass)
       unpacker = normalize_unpacker(options[:unpacker], klass)
@@ -115,7 +115,7 @@ module MessagePack
     #
     def packer(io = nil, options = nil)
       Packer.new(io, options).tap do |pk|
-        pk.instance_variable_set(:@ext_registry, @packer_registry.dup)
+        pk.extension_registry = @packer_registry.dup
       end
     end
 
@@ -127,7 +127,7 @@ module MessagePack
     #
     def unpacker(io = nil, **options)
       Unpacker.new(io, **options).tap do |uk|
-        uk.instance_variable_set(:@ext_registry, @unpacker_registry.dup)
+        uk.extension_registry = @unpacker_registry.dup
       end
     end
 
@@ -320,7 +320,7 @@ module MessagePack
         end
 
         # Set frozen flag to prevent type registration
-        packer.instance_variable_set(:@frozen, true)
+        packer.freeze_for_pool
 
         yield packer
       ensure
@@ -338,7 +338,7 @@ module MessagePack
         end
 
         # Set frozen flag to prevent type registration
-        unpacker.instance_variable_set(:@frozen, true)
+        unpacker.freeze_for_pool
 
         yield unpacker
       ensure

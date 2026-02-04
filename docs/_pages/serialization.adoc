@@ -1,0 +1,159 @@
+---
+title: Serialization
+parent: Core topics
+nav_order: 1
+---
+
+[[serialization]]
+= Serialization
+
+== Purpose
+
+The core MessagePack API provides simple `pack` and `unpack` methods for
+serializing and deserializing Ruby objects to and from binary format.
+
+== References
+
+* link:../references/api[API reference] - Complete method documentation
+* link:../references/format[Format specification] - Binary format details
+
+== Concepts
+
+=== Packing objects
+
+Use `Messagepack.pack` to serialize Ruby objects to binary format:
+
+[source,ruby]
+----
+Messagepack.pack({hello: "world"}) # => "\x81\xA5hello\xA5world"
+----
+
+Where,
+
+* `Messagepack.pack` accepts any Ruby object as its argument
+* The return value is a binary string containing the serialized data
+* Supported types include: nil, boolean, integer, float, string, array,
+  hash, and any registered extension types
+
+=== Unpacking data
+
+Use `Messagepack.unpack` to deserialize binary data back to Ruby objects:
+
+[source,ruby]
+----
+data = Messagepack.pack({hello: "world"})
+Messagepack.unpack(data) # => {"hello"=>"world"}
+----
+
+Where,
+
+* `Messagepack.unpack` accepts a binary string or IO object
+* The return value is the original Ruby object
+* Extra bytes after the deserialized object will raise a
+  `Messagepack::MalformedFormatError`
+
+== Supported types
+
+=== Nil
+
+[source,ruby]
+----
+Messagepack.pack(nil) # => "\xC0"
+Messagepack.unpack("\xC0") # => nil
+----
+
+=== Boolean
+
+[source,ruby]
+----
+Messagepack.pack(true)  # => "\xC3"
+Messagepack.pack(false) # => "\xC2"
+Messagepack.unpack("\xC3") # => true
+Messagepack.unpack("\xC2") # => false
+----
+
+=== Integer
+
+MessagePack supports integers from -2^63 to 2^64-1:
+
+[source,ruby]
+----
+Messagepack.pack(0)   # => "\x00"
+Messagepack.pack(127) # => "\x7F"
+Messagepack.pack(128) # => "\xCC\x80"
+Messagepack.pack(-1)  # => "\xFF"
+Messagepack.unpack("\xCC\x80") # => 128
+----
+
+=== Float
+
+[source,ruby]
+----
+Messagepack.pack(3.14) # => "\xCB@\x09\x1E\xB8Q\xEB\x85\x1F"
+Messagepack.unpack("\xCB@\x09\x1E\xB8Q\xEB\x85\x1F") # => 3.14
+----
+
+=== String
+
+Strings are encoded as UTF-8:
+
+[source,ruby]
+----
+Messagepack.pack("hello") # => "\xA5hello"
+Messagepack.unpack("\xA5hello") # => "hello"
+----
+
+=== Array
+
+[source,ruby]
+----
+Messagepack.pack([1, 2, 3]) # => "\x93\x01\x02\x03"
+Messagepack.unpack("\x93\x01\x02\x03") # => [1, 2, 3]
+----
+
+=== Hash
+
+[source,ruby]
+----
+Messagepack.pack({a: 1, b: 2}) # => "\x82\xA1a\x01\xA1b\x02"
+Messagepack.unpack("\x82\xA1a\x01\xA1b\x02") # => {"a"=>1, "b"=>2}
+----
+
+== Examples
+
+.Using pack and unpack
+====
+[source,ruby]
+----
+# Serialize a complex object
+data = {
+  name: "Alice",
+  age: 30,
+  skills: ["Ruby", "Python"],
+  metadata: {
+    active: true,
+    score: 95.5
+  }
+}
+
+binary = Messagepack.pack(data)
+# => "\x84\xA4name\xA5Alice\xA3age\x1E\xA6skills\
+#     \x92\xA4Ruby\xA6Python\xA8metadata\x82\xA6active\
+#     \xC3\xA5score\xCB@_\x00\x00"
+
+# Deserialize back to a Ruby object
+result = Messagepack.unpack(binary)
+# => {"name"=>"Alice", "age"=>30, "skills"=>["Ruby", "Python"],
+#     "metadata"=>{"active"=>true, "score"=>95.5}}
+----
+====
+
+== Aliases
+
+The module also provides `dump` and `load` as aliases:
+
+[source,ruby]
+----
+Messagepack.dump(data)  # Same as Messagepack.pack(data)
+Messagepack.load(data)  # Same as Messagepack.unpack(data)
+----

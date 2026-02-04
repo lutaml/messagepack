@@ -4,11 +4,11 @@ $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 
 # Define constants for easier test writing
-Packer = MessagePack::Packer
-Unpacker = MessagePack::Unpacker
-Buffer = MessagePack::BinaryBuffer  # Alias for compatibility
-Factory = MessagePack::Factory
-ExtensionValue = MessagePack::ExtensionValue
+Packer = Messagepack::Packer
+Unpacker = Messagepack::Unpacker
+Buffer = Messagepack::BinaryBuffer  # Alias for compatibility
+Factory = Messagepack::Factory
+ExtensionValue = Messagepack::ExtensionValue
 
 # Platform constants
 IS_JRUBY = RUBY_ENGINE == 'jruby'

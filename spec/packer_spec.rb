@@ -9,26 +9,26 @@ if defined?(Encoding)
   Encoding.default_external = 'ASCII-8BIT'
 end
 
-describe MessagePack::Packer do
+describe Messagepack::Packer do
   let :packer do
-    MessagePack::Packer.new
+    Messagepack::Packer.new
   end
 
   it 'initialize' do
-    MessagePack::Packer.new
-    MessagePack::Packer.new(nil)
-    MessagePack::Packer.new(StringIO.new)
-    MessagePack::Packer.new({})
-    MessagePack::Packer.new(StringIO.new, {})
+    Messagepack::Packer.new
+    Messagepack::Packer.new(nil)
+    Messagepack::Packer.new(StringIO.new)
+    Messagepack::Packer.new({})
+    Messagepack::Packer.new(StringIO.new, {})
   end
 
   it 'gets IO or object which has #write to write/append data to it' do
     sample_data = {"message" => "morning!", "num" => 1}
-    sample_packed = MessagePack.pack(sample_data)
+    sample_packed = Messagepack.pack(sample_data)
 
     Tempfile.open("for_io") do |file|
       file.sync = true
-      p1 = MessagePack::Packer.new(file)
+      p1 = Messagepack::Packer.new(file)
       p1.write sample_data
       p1.flush
 
@@ -38,7 +38,7 @@ describe MessagePack::Packer do
     end
 
     dio = StringIO.new
-    p2 = MessagePack::Packer.new(dio)
+    p2 = Messagepack::Packer.new(dio)
     p2.write sample_data
     p2.flush
     dio.rewind
@@ -47,7 +47,7 @@ describe MessagePack::Packer do
     dio = StringIO.new
     writer = Zlib::GzipWriter.new(dio)
     writer.sync = true
-    p3 = MessagePack::Packer.new(writer)
+    p3 = Messagepack::Packer.new(writer)
     p3.write sample_data
     p3.flush
     writer.flush(Zlib::FINISH)
@@ -90,17 +90,17 @@ describe MessagePack::Packer do
     end
 
     dio = DummyIO.new
-    p4 = MessagePack::Packer.new(dio)
+    p4 = Messagepack::Packer.new(dio)
     p4.write sample_data
     p4.flush
     expect(dio.read).to eql(sample_packed)
   end
 
   it 'gets options to specify how to pack values' do
-    u1 = MessagePack::Packer.new
+    u1 = Messagepack::Packer.new
     u1.compatibility_mode?.should == false
 
-    u2 = MessagePack::Packer.new(compatibility_mode: true)
+    u2 = Messagepack::Packer.new(compatibility_mode: true)
     u2.compatibility_mode?.should == true
   end
 
@@ -195,7 +195,7 @@ describe MessagePack::Packer do
 
   it 'flush' do
     io = StringIO.new
-    pk = MessagePack::Packer.new(io)
+    pk = Messagepack::Packer.new(io)
     pk.write_nil
     pk.flush
     pk.to_s.should == ''
@@ -214,18 +214,18 @@ describe MessagePack::Packer do
   end
 
   it 'to_msgpack with packer equals to_msgpack' do
-    nil.to_msgpack(MessagePack::Packer.new).to_str.should == nil.to_msgpack
-    true.to_msgpack(MessagePack::Packer.new).to_str.should == true.to_msgpack
-    false.to_msgpack(MessagePack::Packer.new).to_str.should == false.to_msgpack
-    1.to_msgpack(MessagePack::Packer.new).to_str.should == 1.to_msgpack
-    1.0.to_msgpack(MessagePack::Packer.new).to_str.should == 1.0.to_msgpack
-    "".to_msgpack(MessagePack::Packer.new).to_str.should == "".to_msgpack
-    Hash.new.to_msgpack(MessagePack::Packer.new).to_str.should == Hash.new.to_msgpack
-    Array.new.to_msgpack(MessagePack::Packer.new).to_str.should == Array.new.to_msgpack
+    nil.to_msgpack(Messagepack::Packer.new).to_str.should == nil.to_msgpack
+    true.to_msgpack(Messagepack::Packer.new).to_str.should == true.to_msgpack
+    false.to_msgpack(Messagepack::Packer.new).to_str.should == false.to_msgpack
+    1.to_msgpack(Messagepack::Packer.new).to_str.should == 1.to_msgpack
+    1.0.to_msgpack(Messagepack::Packer.new).to_str.should == 1.0.to_msgpack
+    "".to_msgpack(Messagepack::Packer.new).to_str.should == "".to_msgpack
+    Hash.new.to_msgpack(Messagepack::Packer.new).to_str.should == Hash.new.to_msgpack
+    Array.new.to_msgpack(Messagepack::Packer.new).to_str.should == Array.new.to_msgpack
   end
 
   it 'raises type error on wrong type' do
-    packer = MessagePack::Packer.new
+    packer = Messagepack::Packer.new
     expect { packer.write_float "hello" }.to raise_error(TypeError)
     expect { packer.write_string 1 }.to raise_error(TypeError)
     expect { packer.write_bin 1 }.to raise_error(TypeError)
@@ -238,7 +238,7 @@ describe MessagePack::Packer do
 
   class CustomPack01
     def to_msgpack(pk=nil)
-      return MessagePack.pack(self, pk) unless pk.class == MessagePack::Packer
+      return Messagepack.pack(self, pk) unless pk.class == Messagepack::Packer
       pk.write_array_header(2)
       pk.write(1)
       pk.write(2)
@@ -253,19 +253,19 @@ describe MessagePack::Packer do
   end
 
   it 'calls custom to_msgpack method' do
-    MessagePack.pack(CustomPack01.new).should == [1,2].to_msgpack
-    MessagePack.pack(CustomPack02.new).should == [1,2].to_msgpack
+    Messagepack.pack(CustomPack01.new).should == [1,2].to_msgpack
+    Messagepack.pack(CustomPack02.new).should == [1,2].to_msgpack
     CustomPack01.new.to_msgpack.should == [1,2].to_msgpack
     CustomPack02.new.to_msgpack.should == [1,2].to_msgpack
   end
 
   it 'calls custom to_msgpack method with io' do
     s01 = StringIO.new
-    MessagePack.pack(CustomPack01.new, s01)
+    Messagepack.pack(CustomPack01.new, s01)
     s01.string.should == [1,2].to_msgpack
 
     s02 = StringIO.new
-    MessagePack.pack(CustomPack02.new, s02)
+    Messagepack.pack(CustomPack02.new, s02)
     s02.string.should == [1,2].to_msgpack
 
     s03 = StringIO.new
@@ -279,18 +279,18 @@ describe MessagePack::Packer do
 
   context 'in compatibility mode' do
     it 'does not use the bin types' do
-      packed = MessagePack.pack('hello'.force_encoding(Encoding::BINARY), compatibility_mode: true)
+      packed = Messagepack.pack('hello'.force_encoding(Encoding::BINARY), compatibility_mode: true)
       packed.should eq("\xA5hello")
-      packed = MessagePack.pack(('hello' * 100).force_encoding(Encoding::BINARY), compatibility_mode: true)
+      packed = Messagepack.pack(('hello' * 100).force_encoding(Encoding::BINARY), compatibility_mode: true)
       packed.should start_with("\xDA\x01\xF4")
 
-      packer = MessagePack::Packer.new(compatibility_mode: 1)
+      packer = Messagepack::Packer.new(compatibility_mode: 1)
       packed = packer.pack(('hello' * 100).force_encoding(Encoding::BINARY))
       packed.to_str.should start_with("\xDA\x01\xF4")
     end
 
     it 'does not use the str8 type' do
-      packed = MessagePack.pack('x' * 32, compatibility_mode: true)
+      packed = Messagepack.pack('x' * 32, compatibility_mode: true)
       packed.should start_with("\xDA\x00\x20")
     end
   end
@@ -306,7 +306,7 @@ describe MessagePack::Packer do
       @num.to_msgpack
     end
     def self.from_msgpack_ext(data)
-      self.new(MessagePack.unpack(data))
+      self.new(Messagepack.unpack(data))
     end
   end
 
@@ -321,7 +321,7 @@ describe MessagePack::Packer do
       @num_s.to_msgpack
     end
     def self.from_msgpack_ext(data)
-      self.new(MessagePack.unpack(data))
+      self.new(Messagepack.unpack(data))
     end
   end
 
@@ -348,21 +348,21 @@ describe MessagePack::Packer do
 
   describe '#register_type' do
     it 'get type and class mapping for packing' do
-      packer = MessagePack::Packer.new
+      packer = Messagepack::Packer.new
       packer.register_type(0x01, ValueOne){|obj| obj.to_msgpack_ext }
       packer.register_type(0x02, ValueTwo){|obj| obj.to_msgpack_ext }
 
-      packer = MessagePack::Packer.new
+      packer = Messagepack::Packer.new
       packer.register_type(0x01, ValueOne, :to_msgpack_ext)
       packer.register_type(0x02, ValueTwo, :to_msgpack_ext)
 
-      packer = MessagePack::Packer.new
+      packer = Messagepack::Packer.new
       packer.register_type(0x01, ValueOne, &:to_msgpack_ext)
       packer.register_type(0x02, ValueTwo, &:to_msgpack_ext)
     end
 
     it 'returns a Hash which contains map of Class and type' do
-      packer = MessagePack::Packer.new
+      packer = Messagepack::Packer.new
       packer.register_type(0x01, ValueOne, :to_msgpack_ext)
       packer.register_type(0x02, ValueTwo, :to_msgpack_ext)
 
@@ -494,7 +494,7 @@ describe MessagePack::Packer do
       subject { packer.pack(object).to_s }
 
       it "defaults to #{klass.name} packer if no extension is present" do
-        expect(subject).to eq(MessagePack.dump(klass.new))
+        expect(subject).to eq(Messagepack.dump(klass.new))
       end
 
       it "uses core type extension for #{klass.name}" do
@@ -535,40 +535,40 @@ describe MessagePack::Packer do
     end
 
     it "unpack(fixnum)" do
-      MessagePack.unpack("\x17").should == 23
+      Messagepack.unpack("\x17").should == 23
     end
 
     it "unpack(bignum)" do
-      MessagePack.unpack("\xD3\xFF\xFF\xFF\xFF\x00\x00\x00\x00").should == -4294967296
+      Messagepack.unpack("\xD3\xFF\xFF\xFF\xFF\x00\x00\x00\x00").should == -4294967296
     end
   end
 
   describe "ext formats" do
     [1, 2, 4, 8, 16].zip([0xd4, 0xd5, 0xd6, 0xd7, 0xd8]).each do |n,b|
       it "msgpack fixext #{n} format" do
-        MessagePack::ExtensionValue.new(1, "a"*n).to_msgpack.should ==
+        Messagepack::ExtensionValue.new(1, "a"*n).to_msgpack.should ==
           [b, 1].pack('CC') + "a"*n
       end
     end
 
     it "msgpack ext 8 format" do
-      MessagePack::ExtensionValue.new(1, "").to_msgpack.should ==
+      Messagepack::ExtensionValue.new(1, "").to_msgpack.should ==
         [0xc7, 0, 1].pack('CCC') + ""
-      MessagePack::ExtensionValue.new(-1, "a"*255).to_msgpack.should ==
+      Messagepack::ExtensionValue.new(-1, "a"*255).to_msgpack.should ==
         [0xc7, 255, -1].pack('CCC') + "a"*255
     end
 
     it "msgpack ext 16 format" do
-      MessagePack::ExtensionValue.new(1, "a"*256).to_msgpack.should ==
+      Messagepack::ExtensionValue.new(1, "a"*256).to_msgpack.should ==
         [0xc8, 256, 1].pack('CnC') + "a"*256
-      MessagePack::ExtensionValue.new(-1, "a"*65535).to_msgpack.should ==
+      Messagepack::ExtensionValue.new(-1, "a"*65535).to_msgpack.should ==
         [0xc8, 65535, -1].pack('CnC') + "a"*65535
     end
 
     it "msgpack ext 32 format" do
-      MessagePack::ExtensionValue.new(1, "a"*65536).to_msgpack.should ==
+      Messagepack::ExtensionValue.new(1, "a"*65536).to_msgpack.should ==
         [0xc9, 65536, 1].pack('CNC') + "a"*65536
-      MessagePack::ExtensionValue.new(-1, "a"*65538).to_msgpack.should ==
+      Messagepack::ExtensionValue.new(-1, "a"*65538).to_msgpack.should ==
         [0xc9, 65538, -1].pack('CNC') + "a"*65538
     end
   end
@@ -583,7 +583,7 @@ describe MessagePack::Packer do
     begin
       GC.stress = true
 
-      MessagePack::Packer.new.buffer
+      Messagepack::Packer.new.buffer
       Object.new
     ensure
       GC.stress = stress
@@ -592,7 +592,7 @@ describe MessagePack::Packer do
 
   it "doesn't crash when using recursive packers concurrently" do
     hash_with_indifferent_access = Class.new(Hash)
-    msgpack = MessagePack::Factory.new
+    msgpack = Messagepack::Factory.new
     msgpack.register_type(
       0x02,
       hash_with_indifferent_access,

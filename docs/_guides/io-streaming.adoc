@@ -1,0 +1,226 @@
+---
+title: IO streaming
+nav_order: 2
+---
+
+== Purpose
+
+This guide explains how to work with IO objects and network streams using
+MessagePack.
+
+== References
+
+* link:../pages/streaming[Streaming] - Streaming unpacker concepts
+* link:../pages/buffer[Buffer management] - Buffer IO integration
+
+== Concepts
+
+=== IO-based unpacking
+
+The unpacker can work directly with IO objects:
+
+* Automatically reads data as needed
+* Efficient chunked buffering
+* Suitable for files and network sockets
+
+=== Streaming unpacker
+
+Feed data incrementally:
+
+* Parse incomplete data
+* Handle chunked responses
+* Process multiple objects from stream
+
+== Working with files
+
+=== Writing to files
+
+[source,ruby]
+----
+data = { name: "Alice", items: [1, 2, 3] }
+
+# Pack and write
+File.open("output.msgpack", "wb") do |file|
+  packed = Messagepack.pack(data)
+  file.write(packed)
+end
+
+# Or use pack with IO directly
+File.open("output.msgpack", "wb") do |file|
+  Messagepack.pack(data, file)
+end
+----
+
+=== Reading from files
+
+[source,ruby]
+----
+# Read and unpack
+data = File.read("output.msgpack", encoding: Encoding::BINARY)
+result = Messagepack.unpack(data)
+
+# Or use unpack with IO directly
+File.open("output.msgpack", "rb") do |file|
+  result = Messagepack.unpack(file)
+end
+----
+
+=== Processing large files
+
+[source,ruby]
+----
+# For files with multiple objects, use streaming
+unpacker = Messagepack::Unpacker.new(File.open("large.msgpack", "rb"))
+
+while obj = unpacker.read
+  process(obj)
+end
+----
+
+== Network streaming
+
+=== TCP server example
+
+[source,ruby]
+----
+require 'socket'
+require 'messagepack'
+
+server = TCPServer.new(2000)
+
+loop do
+  client = server.accept
+  unpacker = Messagepack::Unpacker.new(client)
+
+  while obj = unpacker.read
+    # Process each message
+    response = handle_message(obj)
+
+    # Send response
+    packed = Messagepack.pack(response)
+    client.write(packed)
+  end
+
+  client.close
+end
+----
+
+=== TCP client example
+
+[source,ruby]
+----
+require 'socket'
+require 'messagepack'
+
+socket = TCPSocket.new('localhost', 2000)
+
+# Send request
+request = { action: "ping", data: "hello" }
+socket.write(Messagepack.pack(request))
+
+# Read response
+unpacker = Messagepack::Unpacker.new(socket)
+response = unpacker.read
+
+puts response.inspect
+socket.close
+----
+
+=== HTTP streaming
+
+[source,ruby]
+----
+require 'net/http'
+require 'messagepack'
+
+uri = URI('http://example.com/stream')
+http = Net::HTTP.new(uri.host, uri.port)
+
+request = Net::HTTP::Get.new(uri.request_uri)
+http.request(request) do |response|
+  unpacker = Messagepack::Unpacker.new
+
+  response.read_body do |chunk|
+    unpacker.feed(chunk)
+
+    while obj = unpacker.read
+      process(obj)
+    end
+  end
+end
+----
+
+== WebSocket streaming
+
+[source,ruby]
+----
+# Using websocket-client-simple gem
+require 'websocket-client-simple'
+require 'messagepack'
+
+ws = WebSocket::Client::Simple.connect('ws://example.com/stream')
+
+unpacker = Messagepack::Unpacker.new
+
+ws.on :message do |msg|
+  unpacker.feed(msg.data)
+
+  while obj = unpacker.read
+    puts "Received: #{obj.inspect}"
+  end
+end
+
+ws.on :open do
+  # Send MessagePack data
+  ws.send(Messagepack.pack({type: "subscribe", channel: "updates"}))
+end
+----
+
+== Error handling
+
+=== Handling incomplete data
+
+[source,ruby]
+----
+unpacker = Messagepack::Unpacker.new
+
+unpacker.feed(partial_data)
+obj = unpacker.read
+
+if obj
+  puts "Got object: #{obj.inspect}"
+else
+  puts "Need more data"
+end
+----
+
+=== Handling malformed data
+
+[source,ruby]
+----
+begin
+  result = Messagepack.unpack(invalid_data)
+rescue Messagepack::MalformedFormatError => e
+  puts "Invalid MessagePack: #{e.message}"
+rescue Messagepack::UnpackError => e
+  puts "Unpack error: #{e.message}"
+end
+----
+
+=== Handling IO errors
+
+[source,ruby]
+----
+begin
+  File.open("data.msgpack", "rb") do |file|
+    unpacker = Messagepack::Unpacker.new(file)
+    while obj = unpacker.read
+      process(obj)
+    end
+  end
+rescue Errno::ENOENT
+  puts "File not found"
+rescue IOError => e
+  puts "IO error: #{e.message}"
+end
+----

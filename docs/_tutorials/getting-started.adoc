@@ -1,0 +1,165 @@
+---
+title: Getting started
+nav_order: 1
+---
+
+== Purpose
+
+This tutorial introduces the basics of using MessagePack Ruby to serialize and
+deserialize Ruby objects.
+
+== References
+
+* link:../pages/serialization[Serialization] - Core serialization concepts
+* link:../references/api[API reference] - Complete API documentation
+
+== Prerequisites
+
+* Basic knowledge of Ruby
+* Ruby 2.7 or higher
+
+== Installing the gem
+
+Add to your Gemfile:
+
+[source,ruby]
+----
+gem 'messagepack'
+----
+
+Or install directly:
+
+[source,shell]
+----
+gem install messagepack
+----
+
+== Your first serialization
+
+=== Basic pack and unpack
+
+[source,ruby]
+----
+require 'messagepack'
+
+# Pack some data
+data = { message: "Hello, MessagePack!" }
+binary = Messagepack.pack(data)
+
+# Inspect the binary (non-printable characters escaped)
+puts binary.inspect
+# => "\\x81\\xA7message\\xB4Hello, MessagePack!"
+
+# Unpack the data
+result = Messagepack.unpack(binary)
+puts result.inspect
+# => {"message"=>"Hello, MessagePack!"}
+----
+
+=== Working with different types
+
+[source,ruby]
+----
+# Numbers
+Messagepack.pack(42)          # Integer
+Messagepack.pack(3.14)        # Float
+Messagepack.pack(-100)        # Negative integer
+
+# Strings and symbols
+Messagepack.pack("hello")     # String
+Messagepack.pack(:world)      # Symbol (serialized as string)
+
+# Collections
+Messagepack.pack([1, 2, 3])   # Array
+Messagepack.pack({a: 1})      # Hash
+
+# Special values
+Messagepack.pack(nil)         # Nil
+Messagepack.pack(true)        # Boolean true
+Messagepack.pack(false)       # Boolean false
+----
+
+== Working with IO
+
+=== Writing to a file
+
+[source,ruby]
+----
+data = { name: "Alice", age: 30, skills: ["Ruby", "Python"] }
+
+# Write to file
+File.open("data.msgpack", "wb") do |file|
+  file.write(Messagepack.pack(data))
+end
+----
+
+=== Reading from a file
+
+[source,ruby]
+----
+# Read from file
+data = File.read("data.msgpack", encoding: Encoding::BINARY)
+result = Messagepack.unpack(data)
+# => {"name"=>"Alice", "age"=>30, "skills"=>["Ruby", "Python"]}
+----
+
+=== Using IO directly
+
+[source,ruby]
+----
+# Unpack can read from IO directly
+File.open("data.msgpack", "rb") do |file|
+  result = Messagepack.unpack(file)
+end
+----
+
+== Practical example: Configuration file
+
+Create a simple configuration system using MessagePack:
+
+[source,ruby]
+----
+require 'messagepack'
+
+class Config
+  def initialize(path)
+    @path = path
+    @data = load
+  end
+
+  def [](key)
+    @data[key]
+  end
+
+  def []=(key, value)
+    @data[key] = value
+    save
+  end
+
+  private
+
+  def load
+    if File.exist?(@path)
+      Messagepack.unpack(File.read(@path, encoding: Encoding::BINARY))
+    else
+      {}
+    end
+  end
+
+  def save
+    File.write(@path, Messagepack.pack(@data))
+  end
+end
+
+# Usage
+config = Config.new("config.msgpack")
+config[:database] = { host: "localhost", port: 5432 }
+config[:debug] = true
+
+puts config[:database][:host]  # => "localhost"
+----
+
+== Next steps
+
+* link:../tutorials/extension-types[Custom extension types] - Learn to serialize custom classes
+* link:../guides/performance[Performance guide] - Optimize your serialization code

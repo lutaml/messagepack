@@ -33,7 +33,7 @@ Viiite.bm do |b|
     b.report(:pack) do
       ITERATIONS.times do
         case lib
-        when :msgpack then MessagePack.pack(OBJECT_STRUCTURE)
+        when :msgpack then Messagepack.pack(OBJECT_STRUCTURE)
         when :bson then BSON_IMPL.serialize(OBJECT_STRUCTURE).to_s
         when :json then OBJECT_STRUCTURE.to_json
         end
@@ -43,7 +43,7 @@ Viiite.bm do |b|
     b.report(:unpack) do
       ITERATIONS.times do
         case lib
-        when :msgpack then MessagePack.unpack(ENCODED_MSGPACK)
+        when :msgpack then Messagepack.unpack(ENCODED_MSGPACK)
         when :bson then BSON_IMPL.deserialize(ENCODED_BSON)
         when :json then JSON.parse(ENCODED_JSON)
         end
@@ -53,7 +53,7 @@ Viiite.bm do |b|
     b.report(:pack_unpack) do
       ITERATIONS.times do
         case lib
-        when :msgpack then MessagePack.unpack(MessagePack.pack(OBJECT_STRUCTURE))
+        when :msgpack then Messagepack.unpack(Messagepack.pack(OBJECT_STRUCTURE))
         when :bson then BSON_IMPL.deserialize(BSON_IMPL.serialize(OBJECT_STRUCTURE).to_s)
         when :json then JSON.parse(OBJECT_STRUCTURE.to_json)
         end
@@ -63,7 +63,7 @@ Viiite.bm do |b|
     b.report(:unpack_pack) do
       ITERATIONS.times do
         case lib
-        when :msgpack then MessagePack.pack(MessagePack.unpack(ENCODED_MSGPACK))
+        when :msgpack then Messagepack.pack(Messagepack.unpack(ENCODED_MSGPACK))
         when :bson then BSON_IMPL.serialize(BSON_IMPL.deserialize(ENCODED_BSON)).to_s
         when :json then OBJECT_STRUCTURE.to_json(JSON.parse(ENCODED_JSON))
         end

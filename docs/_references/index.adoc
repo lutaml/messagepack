@@ -1,0 +1,14 @@
+---
+title: References
+nav_order: 1
+---
+
+== Purpose
+
+References provide detailed technical specifications and API documentation.
+
+== References
+
+* link:../references/api[API reference] - Complete API documentation
+* link:../references/format[Format specification] - MessagePack binary format details
+* link:../references/extensions[Extension types reference] - Built-in and custom extension types

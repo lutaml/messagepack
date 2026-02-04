@@ -3,16 +3,16 @@
 require_relative 'buffer'
 require_relative 'format'
 
-module MessagePack
+module Messagepack
   # Unpacker deserializes MessagePack binary data into Ruby objects.
   #
   # Usage:
-  #   unpacker = MessagePack::Unpacker.new
+  #   unpacker = Messagepack::Unpacker.new
   #   unpacker.feed(data)
   #   obj = unpacker.read
   #
   # Or for one-shot operations:
-  #   obj = MessagePack::Unpacker.new.full_unpack(data)
+  #   obj = Messagepack::Unpacker.new.full_unpack(data)
   #
   class Unpacker
     STACK_CAPACITY = 128
@@ -61,6 +61,22 @@ module MessagePack
 
       # Partial read state for strings/binaries
       @partial_read = nil  # Stores {type: :str8/:str16/:etc, length: n, buffer: ""}
+    end
+
+    # Set the extension registry for this unpacker.
+    # Used internally by Factory to inject custom type registrations.
+    #
+    # @param registry [ExtensionRegistry::Unpacker] The extension registry to use
+    #
+    def extension_registry=(registry)
+      @ext_registry = registry
+    end
+
+    # Mark this unpacker as frozen for pool use.
+    # Prevents type registration when used from a pool.
+    #
+    def freeze_for_pool
+      @frozen = true
     end
 
     # Feed more data for streaming.
@@ -876,7 +892,7 @@ module MessagePack
     # Extension type registration
 
     def register_type(type_id, klass = nil, unpacker_proc = nil, &block)
-      raise FrozenError, "can't modify frozen MessagePack::Unpacker" if @frozen
+      raise FrozenError, "can't modify frozen Messagepack::Unpacker" if @frozen
 
       # Handle multiple calling patterns:
       # register_type(type_id) { |data| ... }

@@ -1,0 +1,14 @@
+---
+title: Guides
+nav_order: 1
+---
+
+== Purpose
+
+Guides provide task-oriented documentation for specific use cases.
+
+== Guides
+
+* link:../guides/performance[Performance optimization] - Techniques for maximizing performance
+* link:../guides/io-streaming[IO streaming] - Working with files and network streams
+* link:../guides/migration[Migration guide] - Migrating from other MessagePack implementations

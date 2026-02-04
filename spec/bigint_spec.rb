@@ -3,7 +3,7 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 
-describe MessagePack::Bigint do
+describe Messagepack::Bigint do
   it 'serialize and deserialize arbitrary sized integer' do
     [
       1,
@@ -12,7 +12,7 @@ describe MessagePack::Bigint do
       -21903120391203912391023920332103,
       210290021321301203912933021323,
     ].each do |int|
-      expect(MessagePack::Bigint.from_msgpack_ext(MessagePack::Bigint.to_msgpack_ext(int))).to be == int
+      expect(Messagepack::Bigint.from_msgpack_ext(Messagepack::Bigint.to_msgpack_ext(int))).to be == int
     end
   end
 
@@ -22,8 +22,8 @@ describe MessagePack::Bigint do
       -21903120391203912391023920332103 => "\x01/\xB2\xBDG\xBD\xDE\xAA\xEBt\xCC\x8A\xC1\x00\x00\x01\x14".b,
       210290021321301203912933021323 => "\x00\xC4\xD8\x96\x8Bm\xCB\xC7\x03\xA7{\xD4\"\x00\x00\x00\x02".b,
     }.each do |int, payload|
-      expect(MessagePack::Bigint.to_msgpack_ext(int)).to be == payload
-      expect(MessagePack::Bigint.from_msgpack_ext(payload)).to be == int
+      expect(Messagepack::Bigint.to_msgpack_ext(int)).to be == payload
+      expect(Messagepack::Bigint.from_msgpack_ext(payload)).to be == int
     end
   end
 end

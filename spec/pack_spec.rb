@@ -3,7 +3,7 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'messagepack'
 
-describe MessagePack do
+describe Messagepack do
   it 'to_msgpack returns String' do
     expect(nil.to_msgpack.class).to eq(String)
     expect(true.to_msgpack.class).to eq(String)
@@ -17,7 +17,7 @@ describe MessagePack do
 
   class CustomPack01
     def to_msgpack(pk = nil)
-      return MessagePack.pack(self, pk) unless pk.class == MessagePack::Packer
+      return Messagepack.pack(self, pk) unless pk.class == Messagepack::Packer
       pk.write_array_header(2)
       pk.write(1)
       pk.write(2)
@@ -32,8 +32,8 @@ describe MessagePack do
   end
 
   it 'calls custom to_msgpack method' do
-    expect(MessagePack.pack(CustomPack01.new)).to eq([1, 2].to_msgpack)
-    expect(MessagePack.pack(CustomPack02.new)).to eq([1, 2].to_msgpack)
+    expect(Messagepack.pack(CustomPack01.new)).to eq([1, 2].to_msgpack)
+    expect(Messagepack.pack(CustomPack02.new)).to eq([1, 2].to_msgpack)
     expect(CustomPack01.new.to_msgpack).to eq([1, 2].to_msgpack)
     expect(CustomPack02.new.to_msgpack).to eq([1, 2].to_msgpack)
   end
@@ -41,11 +41,11 @@ describe MessagePack do
   it 'calls custom to_msgpack method with io' do
     require 'stringio'
     s01 = StringIO.new
-    MessagePack.pack(CustomPack01.new, s01)
+    Messagepack.pack(CustomPack01.new, s01)
     expect(s01.string.b).to eq([1, 2].to_msgpack)
 
     s02 = StringIO.new
-    MessagePack.pack(CustomPack02.new, s02)
+    Messagepack.pack(CustomPack02.new, s02)
     expect(s02.string.b).to eq([1, 2].to_msgpack)
 
     s03 = StringIO.new

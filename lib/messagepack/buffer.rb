@@ -2,7 +2,7 @@
 
 require_relative 'format'
 
-module MessagePack
+module Messagepack
   # BinaryBuffer manages binary data for reading and writing MessagePack data.
   #
   # This class provides:
@@ -12,6 +12,9 @@ module MessagePack
   #
   class BinaryBuffer
     DEFAULT_IO_BUFFER_SIZE = 32 * 1024
+    # Coalescing threshold: chunks smaller than this will be merged with the previous chunk
+    # This reduces the number of chunks and improves to_s performance
+    COALESCE_THRESHOLD = 512
 
     attr_reader :io
 
@@ -31,68 +34,80 @@ module MessagePack
 
     # Write a single byte
     def write_byte(byte)
-      @chunks << (byte & 0xFF).chr.force_encoding(Encoding::BINARY)
-      @length += 1
-      self
+      append_to_last_chunk((byte & 0xFF).chr.force_encoding(Encoding::BINARY))
     end
 
     # Write multiple bytes
     def write_bytes(bytes)
       return self if bytes.nil? || bytes.empty?
 
-      @chunks << bytes.dup.force_encoding(Encoding::BINARY)
-      @length += bytes.bytesize
+      append_to_last_chunk(bytes.dup.force_encoding(Encoding::BINARY))
+    end
+
+    # Append data to the last chunk if it's small enough, otherwise create a new chunk
+    # This coalesces small chunks to reduce the total number of chunks
+    def append_to_last_chunk(data)
+      data_bytesize = data.bytesize
+      data.force_encoding(Encoding::BINARY)
+
+      # Check if we should coalesce with the last chunk
+      if !@chunks.empty? && should_coalesce?(data_bytesize)
+        # Append to the last chunk instead of creating a new one
+        @chunks[-1] << data
+        @length += data_bytesize
+      else
+        # Create a new chunk
+        @chunks << data
+        @length += data_bytesize
+      end
+
       self
+    end
+
+    # Check if we should coalesce new data with the last chunk
+    # Coalesce if: both the new data AND the last chunk are below the threshold
+    def should_coalesce?(new_data_bytesize)
+      last_chunk_bytesize = @chunks.last.bytesize
+
+      # Coalesce if both are below the threshold
+      last_chunk_bytesize < COALESCE_THRESHOLD && new_data_bytesize < COALESCE_THRESHOLD
     end
 
     # Write 16-bit unsigned big-endian integer
     def write_big_endian_uint16(value)
-      @chunks << [value].pack('n').force_encoding(Encoding::BINARY)
-      @length += 2
-      self
+      append_to_last_chunk([value].pack('n'))
     end
 
     # Write 32-bit unsigned big-endian integer
     def write_big_endian_uint32(value)
-      @chunks << [value].pack('N').force_encoding(Encoding::BINARY)
-      @length += 4
-      self
+      append_to_last_chunk([value].pack('N'))
     end
 
     # Write 64-bit unsigned big-endian integer
     def write_big_endian_uint64(value)
-      @chunks << [value].pack('Q>').force_encoding(Encoding::BINARY)
-      @length += 8
-      self
+      append_to_last_chunk([value].pack('Q>'))
     end
 
     # Write 64-bit signed big-endian integer
     def write_big_endian_int64(value)
-      @chunks << [value].pack('q>').force_encoding(Encoding::BINARY)
-      @length += 8
-      self
+      append_to_last_chunk([value].pack('q>'))
     end
 
     # Write 32-bit float (IEEE 754 binary32, big-endian)
     def write_float32(value)
-      @chunks << [value].pack('g').force_encoding(Encoding::BINARY)
-      @length += 4
-      self
+      append_to_last_chunk([value].pack('g'))
     end
 
     # Write 64-bit float (IEEE 754 binary64, big-endian)
     def write_float64(value)
-      @chunks << [value].pack('G').force_encoding(Encoding::BINARY)
-      @length += 8
-      self
+      append_to_last_chunk([value].pack('G'))
     end
 
     # Write data to buffer and return bytes written
     def write(data)
       return 0 if data.nil? || data.empty?
 
-      @chunks << data.dup.force_encoding(Encoding::BINARY)
-      @length += data.bytesize
+      append_to_last_chunk(data.dup.force_encoding(Encoding::BINARY))
       data.bytesize
     end
 
@@ -348,6 +363,14 @@ module MessagePack
 
     # Convert all buffer data to a single string (does not consume data)
     def to_s
+      # Fast-path: if position is 0, we can join all chunks directly
+      if @position == 0
+        result = @chunks.empty? ? String.new : @chunks.join
+        result.force_encoding(Encoding::BINARY)
+        return result
+      end
+
+      # General case: skip bytes before @position
       result = String.new(capacity: @length)
       offset = 0
       @chunks.each do |chunk|
