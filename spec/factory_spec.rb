@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'set'
 
 describe Messagepack::Factory do
   subject do
