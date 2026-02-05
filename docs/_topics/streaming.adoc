@@ -1,6 +1,6 @@
 ---
 title: Streaming
-parent: Core topics
+has_children: false
 nav_order: 7
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Buffer
-parent: Core topics
+has_children: false
 nav_order: 6
 ---
 

@@ -54,8 +54,8 @@ nav_sort: order
 
 # Collections for organizing content
 collections:
-  pages:
-    permalink: "/:path/"
+  topics:
+    permalink: "/:collection/:path/"
     output: true
   tutorials:
     permalink: "/:collection/:path/"
@@ -70,7 +70,7 @@ collections:
 # Just the Docs collection configuration
 just_the_docs:
   collections:
-    pages:
+    topics:
       name: Core topics
       nav_fold: false
     tutorials:

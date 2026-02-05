@@ -1,6 +1,6 @@
 ---
 title: Symbol extension
-parent: Core topics
+has_children: false
 nav_order: 5
 ---
 
